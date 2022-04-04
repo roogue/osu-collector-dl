@@ -1,3 +1,7 @@
 import { Main } from "./struct/Main";
+import { config } from "../config";
 
-export { Main };
+(async () => {
+  const main = new Main(config.id, { parallel: config.parallel });
+  await main.download();
+})();
