@@ -11,7 +11,7 @@ export const config = {
    * The Id of the Osu Collection
    * Usually the Numbers After the Last Slash in the URL
    */
-  id: 0, // Example: 1234
+  id: 3563, // Example: 1234
   parallel: true, // Download | Fetch Beatmaps in Parallel
 
   url: "https://osucollector.com/collections/", // Do Not Change

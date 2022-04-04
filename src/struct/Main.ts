@@ -2,7 +2,7 @@ import puppeteer from "puppeteer";
 import { Browser, Page } from "puppeteer";
 import { config } from "../../config";
 import osu from "node-osu";
-import { Options } from "@/types";
+import { Options } from "../types";
 import { sleep, removeDuplicate } from "../utils/util";
 import { DownloadManager } from "./DownloadManager";
 
