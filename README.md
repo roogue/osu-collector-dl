@@ -16,7 +16,6 @@ Then, rename `config.env.example` to `config,env`, and paste your osuApi key aft
 ```
 api_key = 1234567890abcdef
 ```
-```
 
 ## Usage
 
