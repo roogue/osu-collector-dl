@@ -16,24 +16,13 @@ Then, rename `config.env.example` to `config,env`, and paste your osuApi key aft
 ```
 api_key = 1234567890abcdef
 ```
-
-Change `id` value in `config.ts`
-```js
-{
-...
-id: 1234
-...
-}
 ```
 
 ## Usage
 
-Run the test or main
-```bash
-yarn run test
-#OR
-yarn start
-```
+Click the runner: 
+(run.bat) for window
+(run.sh) for linux
 
 
 ## License
