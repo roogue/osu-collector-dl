@@ -2,6 +2,9 @@ import { Main } from "./struct/Main";
 import { config } from "../config";
 
 (async () => {
-  const main = new Main(config.id, { parallel: config.parallel });
+  const prompt = require("prompt-sync")({ sigint: true });
+  const id = prompt("Please Enter An ID: ");
+
+  const main = new Main(id, { parallel: config.parallel });
   await main.download();
 })();

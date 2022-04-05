@@ -64,33 +64,33 @@ export class Main {
     /**
      * Initiate Browser and Page
      */
-    // console.log("Initiating Browser...");
+    console.log("Initiating Browser...");
     await this.init();
-    // console.log("Headless Browser Launched.");
+    console.log("Headless Browser Launched.");
 
     /**
      * Scrape Page For Beatmap IDs
      */
-    // console.log("Scraping...");
+    console.log("Scraping...");
     const beatmapsId = await this.scrape();
     if (!beatmapsId.length) throw new Error("No Beatmap Found");
-    // console.log(beatmapsId.length, " Beatmaps Found.");
+    console.log(beatmapsId.length, " Beatmaps Found.");
 
     /**
      * Resolve BeatmapIds Into BeatmapSets
      */
-    // console.log("Resolving Beatmaps...");
+    console.log("Resolving Beatmaps...");
     const beatmapsSet = await this.resolveBeatmapSets(beatmapsId);
     const ids = removeDuplicate(beatmapsSet.map((b) => b.id));
     if (!beatmapsSet.length) throw new Error("No Beatmap Found");
-    // console.log(ids);
-    // console.log("==============================");
-    // console.log(ids.length, " BeatmapsSets Found.");
+    console.log(ids);
+    console.log("==============================");
+    console.log(ids.length, " BeatmapsSets Found.");
 
     /**
      * Perfoms Download
      */
-    // console.log("Downloading...");
+    console.log(`Downloading to Path: '${this.DownloadManager.path}'`);
     await this.downloadBeatmapSets(ids);
 
     return;

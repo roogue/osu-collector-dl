@@ -6,13 +6,10 @@ env.config({ path: "./config.env" });
  */
 
 export const config = {
-
   /**
-   * The Id of the Osu Collection
-   * Usually the Numbers After the Last Slash in the URL
+   * Whether or Not Fetches should be done in Parallel
    */
-  id: 3563, // Example: 1234
-  parallel: true, // Download | Fetch Beatmaps in Parallel
+  parallel: true,
 
   url: "https://osucollector.com/collections/", // Do Not Change
   beatmaps_url: "https://osu.ppy.sh/beatmaps/", // Do Not Change

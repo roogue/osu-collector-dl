@@ -4,14 +4,15 @@
   "main": "./dist/src/index.js",
   "scripts": {
     "build": "tsc -p .",
-    "start": "yarn run build && node .",
-    "test": "yarn run build && node ./dist/src/__test/test.js"
+    "start": "npm run build && node .",
+    "test": "npm run build && node ./dist/src/__test/test.js"
   },
   "license": "MIT",
   "dependencies": {
     "axios": "^0.26.1",
     "dotenv": "^16.0.0",
     "node-osu": "^2.2.1",
+    "prompt-sync": "^4.2.0",
     "puppeteer": "^13.5.2"
   }
 }
