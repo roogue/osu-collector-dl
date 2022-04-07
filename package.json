@@ -3,9 +3,8 @@
   "version": "2.0.0",
   "main": "./dist/src/index.js",
   "scripts": {
-    "build": "tsc -p .",
-    "start": "npm run build && node .",
-    "run": "node .",
+    "build": "tsc -p . && node .",
+    "start": "node .",
     "test": "npm run build && node ./dist/src/__test/test.js"
   },
   "license": "MIT",

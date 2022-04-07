@@ -1,2 +1,2 @@
 echo "Osu!Collector-Dl Script Made By Roogue"
-npm run start
+npm i && npm run start
