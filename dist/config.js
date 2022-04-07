@@ -36,6 +36,13 @@ exports.config = {
      */
     rate_limit: 30,
     impulse_rate: 10,
-    impulse_interval: 2, // Impulse Interval in Second (Default: 2)
+    impulse_interval: 2,
+    /**
+     * Download Impulse Bursting For Api Requests
+     * Change Depends on The Rate Limiter of Osu Mirror Api
+     *
+     * This Config Only Useful When Fetch in Parallel
+     */
+    dl_impulse_rate: 5, // Download Impulse Rate (Default: 5)
 };
 //# sourceMappingURL=config.js.map

@@ -7,7 +7,7 @@ env.config({ path: "./config.env" });
 
 export const config = {
   /**
-   * Whether or Not Fetches should be done in Parallel
+   * Whether or Not Fetches And Downloads Should be Done in Parallel
    */
   parallel: true,
 
@@ -29,12 +29,20 @@ export const config = {
    * Change Depends on The Rate Limiter of Osu API
    *
    * This Config Only Useful When Fetch in Parallel
-   * 
-   * If Error Still Occurs, Try False the Value Of Parallel 
-   * Or Increase the Impulse Interval 
+   *
+   * If Error Still Occurs, Try False the Value Of Parallel
+   * Or Increase the Impulse Interval
    * And Decrease Impulse Rate
    */
   rate_limit: 30, // Rate Limiter (Default: 30)
   impulse_rate: 10, // Impulse Rate (Default: 10)
   impulse_interval: 2, // Impulse Interval in Second (Default: 2)
+
+  /**
+   * Download Impulse Bursting For Api Requests
+   * Change Depends on The Rate Limiter of Osu Mirror Api
+   *
+   * This Config Only Useful When Fetch in Parallel
+   */
+  dl_impulse_rate: 5, // Download Impulse Rate (Default: 5)
 };

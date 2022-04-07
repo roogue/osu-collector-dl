@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc -p .",
     "start": "npm run build && node .",
+    "run": "node .",
     "test": "npm run build && node ./dist/src/__test/test.js"
   },
   "license": "MIT",
