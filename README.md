@@ -3,8 +3,8 @@
 Osu!Collector Downloader
 
 ## Requirements
-* Nodejs v16
-* Osu Api Key
+* [Nodejs v16](https://nodejs.org/en/)
+* [Osu Api Key](https://old.ppy.sh/p/api)
 
 ## Installation
 
