@@ -1,8 +1,9 @@
-import fs from "fs";
+import { createWriteStream, existsSync, mkdirSync } from "fs";
 import axios from "axios";
 import { resolve } from "path";
 import { AxiosResponse } from "axios";
 import { Readable } from "stream";
+import { config } from "../../config";
 
 export class DownloadManager {
   public path: string;
@@ -10,20 +11,30 @@ export class DownloadManager {
 
   constructor(path?: string, parallel?: boolean) {
     this.path = path ?? resolve(__dirname, "../../../downloads");
-    this.parallel = parallel || false;
+    this.parallel = parallel ?? false;
   }
 
   public async bulk_download(urls: string[]) {
+    /**
+     * Check If Directory Exist
+     */
+    this.checkDir();
+
+    /**
+     * Performs Downloads
+     */
     if (this.parallel) {
-      const promises = urls.map((url) => this._dl(url));
-      return await Promise.all(promises);
+      /**
+       * Impulsive Download if Urls are Too Many
+       */
+      urls.length > 10
+        ? this.impulse(urls, config.dl_impulse_rate)
+        : await Promise.all(urls.map((url) => this._dl(url)));
     } else {
-      const res = [];
-      for (let i = 0; i < urls.length; i++) {
-        const d = this._dl(urls[i]);
-        res.push(d);
-      }
-      return res.length ? res : null;
+      /**
+       * Download Sequentially
+       */
+      for (let i = 0; i < urls.length; i++) await this._dl(urls[i]);
     }
   }
 
@@ -31,6 +42,7 @@ export class DownloadManager {
     /**
      * GET Download Stream
      */
+    console.log("Requesting: " + url);
     const res = await axios
       .get(url, { responseType: "stream" })
       .catch(() => null);
@@ -41,12 +53,16 @@ export class DownloadManager {
      * Create Stream and Pipe
      */
     const filename = this.getFilename(res);
-    const file = fs.createWriteStream(this.path + "/" + filename);
-    res.data.pipe(file);
+    const file = createWriteStream(this.path + "/" + filename);
 
-    return await new Promise<void>((resolve, reject) => {
-      res.data.on("end", () => resolve());
-      res.data.on("error", () => reject());
+    await new Promise<void>((resolve, reject) => {
+      console.log("Downloading: " + filename);
+      res.data.pipe(file);
+      file.on("close", () => {
+        console.log("Downloaded: " + filename);
+        resolve();
+      });
+      file.on("error", reject);
     });
   }
 
@@ -61,8 +77,46 @@ export class DownloadManager {
     const regexFilename = /filename="(.+)"/g;
     const regexResult = regexFilename.exec(contentDispositionHeader);
 
-    if (regexResult) return decodeURIComponent(regexResult[1].replace(/( |\/)+/g, "_"));
+    /**
+     * Regex To Prevent Forbidden Directory Names
+     */
+    const regex = /( |\/|<|>|:|"|\\|\||\?|\*)+/g;
 
-    return "Untitled.osz";
+    return regexResult
+      ? decodeURIComponent(regexResult[1].replace(regex, ""))
+      : "Untitled.osz";
+  }
+  /**
+   * Check If Directory Exist
+   */
+  private checkDir(): void {
+    if (!existsSync(this.path)) {
+      mkdirSync(this.path);
+    }
+    return;
+  }
+
+  private async impulse(ids: string[], rate: number): Promise<any[]> {
+    const downloaded: any[] = [];
+
+    const perLen = ids.length / rate;
+
+    for (let i = 0; i < perLen; i++) {
+      const promises: Promise<any>[] = [];
+      /**
+       * Bursting Rate
+       */
+      const start = i * rate;
+      const end = (i + 1) * rate;
+      const inRange = ids.slice(start, end);
+      const p = inRange.map((id) => this._dl(id));
+      promises.push(...p);
+
+      /**
+       * Resolve Promises
+       */
+      downloaded.push([...(await Promise.all(promises))]);
+    }
+    return downloaded;
   }
 }

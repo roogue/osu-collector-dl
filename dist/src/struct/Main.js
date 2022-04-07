@@ -67,12 +67,12 @@ class Main {
          */
         console.log("Resolving Beatmaps...");
         const beatmapsSet = await this.resolveBeatmapSets(beatmapsId);
-        const ids = (0, util_1.removeDuplicate)(beatmapsSet.map((b) => b.id));
+        const ids = (0, util_1.removeDuplicate)(beatmapsSet.map((b) => b.beatmapSetId));
         if (!beatmapsSet.length)
             throw new Error("No Beatmap Found");
         console.log(ids);
         console.log("==============================");
-        console.log(ids.length, " BeatmapsSets Found.");
+        console.log(ids.length, " BeatmapSets Found.");
         /**
          * Perfoms Download
          */
