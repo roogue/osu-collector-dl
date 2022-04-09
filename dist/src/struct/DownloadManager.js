@@ -25,7 +25,7 @@ class DownloadManager {
             /**
              * Impulsive Download if Urls are Too Many
              */
-            urls.length > 10
+            urls.length > config_1.config.dl_impulse_rate
                 ? this.impulse(urls, config_1.config.dl_impulse_rate)
                 : await Promise.all(urls.map((url) => this._dl(url)));
         }
