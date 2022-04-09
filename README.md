@@ -37,8 +37,8 @@ For an example: Insert "44" if you want to download from this link: https://osuc
 
 ## Tweaks
 
-You can also change the config to have diffrent in fetching or download speed in `./dist/config.js`.
-Furthur info are commented in the file.
+You can also modify the config to have a different speed in fetching or downloading at `./dist/config.js`.
+Further info are commented in the file.
 
 ## License
 
