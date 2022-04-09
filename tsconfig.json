@@ -13,6 +13,7 @@
     "baseUrl": ".",
     "strict": true,
     "skipLibCheck": true,
+    "removeComments": false,
     "paths": {
       "@/*": ["./src/*"]
     }
