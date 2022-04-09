@@ -9,12 +9,15 @@ const config_1 = require("../../config");
 const node_osu_1 = __importDefault(require("node-osu"));
 const util_1 = require("../utils/util");
 const DownloadManager_1 = require("./DownloadManager");
+const axios_1 = __importDefault(require("axios"));
 class Main {
     constructor(id, { parallel = false, path }) {
-        this.url = config_1.config.url + id;
+        this.url = config_1.config.osuCollector_url + id;
         this.browser = null;
         this.page = null;
-        this.osuApi = new node_osu_1.default.Api(config_1.config.api_key, { notFoundAsError: false });
+        this.osuApi = config_1.config.api_key
+            ? new node_osu_1.default.Api(config_1.config.api_key, { notFoundAsError: true })
+            : null;
         this.DownloadManager = new DownloadManager_1.DownloadManager(path, parallel);
         this.options = { parallel, path };
     }
@@ -22,9 +25,11 @@ class Main {
         /**
          * Initiate Browser and Page
          */
-        this.browser = await puppeteer_1.default.launch({ headless: true });
+        this.browser = await puppeteer_1.default.launch({ headless: config_1.config.headless });
         this.page = await this.browser.newPage();
-        await this.page.goto(this.url, { timeout: 0 }).catch(console.error);
+        await this.page
+            .goto(this.url, { timeout: 0, waitUntil: "domcontentloaded" })
+            .catch(console.error);
     }
     async scrape() {
         /**
@@ -37,7 +42,9 @@ class Main {
         /**
          * Scroll to Bottom
          */
-        await this.autoScroll();
+        config_1.config.optimisedScroll
+            ? await this.optimisedScroll()
+            : await this.autoScroll();
         /**
          * Evaluate Page Read Contents
          */
@@ -63,12 +70,16 @@ class Main {
             throw new Error("No Beatmap Found");
         console.log(beatmapsId.length, " Beatmaps Found.");
         /**
+         * Close Browser
+         */
+        await this.closeBrowser();
+        /**
          * Resolve BeatmapIds Into BeatmapSets
          */
         console.log("Resolving Beatmaps...");
-        const beatmapsSet = await this.resolveBeatmapSets(beatmapsId);
-        const ids = (0, util_1.removeDuplicate)(beatmapsSet.map((b) => b.beatmapSetId));
-        if (!beatmapsSet.length)
+        const beatmapsSetIds = await this.resolveBeatmapSetsId(beatmapsId);
+        const ids = (0, util_1.removeDuplicate)(beatmapsSetIds).filter((a) => a);
+        if (!beatmapsSetIds.length)
             throw new Error("No Beatmap Found");
         console.log(ids);
         console.log("==============================");
@@ -84,17 +95,19 @@ class Main {
      * Utils
      */
     async downloadBeatmapSets(ids) {
-        const baseUrl = config_1.config.chimuApi_url;
+        const baseUrl = config_1.config.osuMirror_url + "download/";
         const urls = ids.map((id) => baseUrl + id);
         return await this.DownloadManager.bulk_download(urls);
     }
-    async resolveBeatmapSets(ids) {
+    async resolveBeatmapSetsId(ids) {
         /**
          * Whether Fetch in Parallel
          */
         if (this.options.parallel) {
-            //30 is Default Anti Rate Limiting Value
-            if (ids.length > 30) {
+            /**
+             * Impulsive Fetches if Ids is Too Many
+             */
+            if (ids.length > config_1.config.impulse_rate) {
                 return await this.impulse(ids, config_1.config.impulse_rate, config_1.config.impulse_interval);
             }
             else {
@@ -113,10 +126,17 @@ class Main {
     }
     async getBeatmapSets(id) {
         /**
-         * Get Beatmaps Data from osu! API
+         * Get Beatmaps Data from API
          */
-        const sets = await this.osuApi.getBeatmaps({ b: id });
-        return sets.length ? sets[0] : null;
+        if (this.osuApi) {
+            const sets = await this.osuApi.getBeatmaps({ b: id });
+            return sets.length ? sets[0].beatmapSetId : null;
+        }
+        else {
+            const baseUrl = config_1.config.osuMirror_url + "map/" + id;
+            const sets = await axios_1.default.get(baseUrl).catch(() => null);
+            return sets ? sets.data.ParentSetId : null;
+        }
     }
     async impulse(ids, rate, interval) {
         const promises = [];
@@ -156,6 +176,46 @@ class Main {
                 }
             }, config.scroll_interval);
         }), config_1.config);
+    }
+    async optimisedScroll() {
+        if (!this.page)
+            throw new Error("Page is not initialized");
+        /**
+         * Perform Auto Scroll
+         */
+        return await this.page.evaluate(async (config) => await new Promise(async (resolve) => {
+            while (true) {
+                /**
+                 * A B
+                 *
+                 * A yes B yes => no
+                 * A yes B no => yes
+                 * A no B yes => no
+                 * A no B no => no
+                 */
+                const selector = !!document.querySelector("p > b") &&
+                    !document.querySelector(".show-loading-animation");
+                /**
+                 * Break If Scrolled To Bottom
+                 */
+                if (selector)
+                    break;
+                /**
+                 *Sleep Function
+                 */
+                await new Promise((r) => setTimeout(r, config.scroll_interval));
+                window.scrollBy(0, document.body.scrollHeight);
+            }
+            resolve();
+        }), config_1.config);
+    }
+    async closeBrowser() {
+        if (!this.browser)
+            throw new Error("Browser is not initialized");
+        /**
+         * Call a Close Method
+         */
+        await this.browser.close();
     }
 }
 exports.Main = Main;
