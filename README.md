@@ -18,8 +18,8 @@ git clone https://github.com/roogue/osu-collector-dl.git
 ```
 
 [ Optional ]
-Then, rename `config.env.example` to `config,env`, and paste your osuApi key after the `=` symbols
-_Inserting your api key is recommended as it is more stable_
+Then, rename `config.env.example` to `config,env`, and paste your osuApi key after the `=` symbols.
+_Warning: Using Osu Mirror in resolving beatmaps are highly unstable, an osu api Key is recommended_
 
 ```
 api_key = 1234567890abcdef
