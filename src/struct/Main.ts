@@ -3,7 +3,7 @@ import { Browser, Page } from "puppeteer";
 import { config } from "../../config";
 import osu from "node-osu";
 import { Options } from "../types";
-import { sleep, removeDuplicate } from "../utils/util";
+import { sleep, removeDuplicate, pkgFixes } from "../utils/util";
 import { DownloadManager } from "./DownloadManager";
 import axios from "axios";
 
@@ -30,7 +30,12 @@ export class Main {
     /**
      * Initiate Browser and Page
      */
-    this.browser = await puppeteer.launch({ headless: config.headless });
+    const executablePath = pkgFixes();
+
+    this.browser = await puppeteer.launch({
+      headless: config.headless,
+      executablePath,
+    });
     this.page = await this.browser.newPage();
     await this.page
       .goto(this.url, { timeout: 0, waitUntil: "domcontentloaded" })
