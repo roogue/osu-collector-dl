@@ -1,5 +1,14 @@
-import env from "dotenv";
-env.config({ path: "./config.env" });
+import { readFileSync } from "fs";
+import { parse } from "ini";
+
+const {
+  OsuApi,
+  GeneralSettings,
+  ScrollSettings,
+  RateLimitSettings,
+  DownloadSettings,
+  BrowserSettings,
+} = parse(readFileSync("./config.ini", "utf-8"));
 
 /**
  * WARNING: DO NOT CHANGE ANY OF THE SETTING IF YOU DON'T KNOW WHAT YOU'RE DOING
@@ -11,7 +20,7 @@ export const config = {
    *
    * This is useful as it will speed up the process of downloading/fetching significantly.
    */
-  parallel: true,
+  parallel: !!GeneralSettings.parallel,
 
   /**
    * Base Url, Do Not Change.
@@ -28,7 +37,7 @@ export const config = {
    *
    * Warning: You should not set your api key here, instead, set it in your config.env file for security reasons.
    */
-  api_key: process.env.api_key || null,
+  api_key: !!OsuApi.key ? String(OsuApi.key) : null,
   /**
    * Scroll Option For Auto Scroll,
    * You can Modify Depends on Your Internet Speed
@@ -37,9 +46,9 @@ export const config = {
    * scroll_distance - The distance to scroll (Default: 1000). This is only useful when optimisedScroll is false
    * scroll_interval - The interval of scrolling in ms(Default: 500).
    */
-  optimisedScroll: true,
-  scroll_distance: 1000,
-  scroll_interval: 500,
+  optimisedScroll: !!ScrollSettings.optimisedScroll,
+  scroll_distance: Number(ScrollSettings.scroll_distance),
+  scroll_interval: Number(ScrollSettings.scroll_interval),
 
   /**
    * Impulse Bursting For Api Requests
@@ -55,9 +64,9 @@ export const config = {
    * impulse_rate - The amount of requests to be made per burst (Default: 10)
    * impulse_interval - The interval of requests in seconds (Default: 2)
    */
-  rate_limit: 30,
-  impulse_rate: 10,
-  impulse_interval: 2,
+  rate_limit: Number(RateLimitSettings.rate_limit),
+  impulse_rate: Number(RateLimitSettings.impulse_rate),
+  impulse_interval: Number(RateLimitSettings.impulse_interval),
 
   /**
    * Download Impulse Bursting For Api Requests
@@ -67,7 +76,8 @@ export const config = {
    *
    * dl_impulse_rate - The amount of download requests to be made per burst (Default: 5)
    */
-  dl_impulse_rate: 5,
+  dl_impulse_rate: Number(DownloadSettings.dl_impulse_rate),
+  directory: DownloadSettings.directory,
 
   /**
    * Wheter Headless Mode Should be Used
@@ -75,5 +85,5 @@ export const config = {
    * When false, browser will be invisible when processes is running.
    * Set to false may slightly increase the speed of the process.
    */
-  headless: false,
+  headless: !!BrowserSettings.headless,
 };

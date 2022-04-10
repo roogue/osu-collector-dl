@@ -107,3 +107,9 @@ typings/
 
 # Dist
 dist/
+
+#rh
+resourcehacker/
+
+#release
+release/

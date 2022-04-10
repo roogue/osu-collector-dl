@@ -1,18 +1,22 @@
 {
   "name": "osu-collector-dl",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "main": "./dist/src/index.js",
   "scripts": {
-    "build": "tsc -p . && node .",
+    "build-test": "npm run build-ts && node .",
     "start": "node .",
-    "test": "npm run build && node ./dist/src/__test/test.js"
+    "test": "npm run build-ts && node ./dist/src/__test/test.js",
+    "build-ts": "tsc -p ."
   },
   "license": "MIT",
   "dependencies": {
     "axios": "^0.26.1",
-    "dotenv": "^16.0.0",
+    "ini": "^3.0.0",
     "node-osu": "^2.2.1",
     "prompt-sync": "^4.2.0",
     "puppeteer": "^13.5.2"
+  },
+  "devDependencies": {
+    "@types/ini": "^1.3.31"
   }
 }
