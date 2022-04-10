@@ -3,7 +3,7 @@ import axios from "axios";
 import { resolve } from "path";
 import { AxiosResponse } from "axios";
 import { Readable } from "stream";
-import { config } from "../../config";
+import { config } from "../config";
 
 export class DownloadManager {
   public path: string;

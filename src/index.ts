@@ -1,5 +1,5 @@
 import { Main } from "./struct/Main";
-import { config } from "../config";
+import { config } from "./config";
 
 (async () => {
   const prompt = require("prompt-sync")({ sigint: true });
