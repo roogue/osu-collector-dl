@@ -1,2 +1,1 @@
-import { config } from "../config";
-console.log(config);
+console.log(process.cwd())

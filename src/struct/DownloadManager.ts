@@ -1,6 +1,5 @@
-import { createWriteStream, existsSync, mkdirSync } from "fs";
+import { createWriteStream } from "fs";
 import axios from "axios";
-import { resolve } from "path";
 import { AxiosResponse } from "axios";
 import { Readable } from "stream";
 import { config } from "../config";
@@ -10,15 +9,16 @@ export class DownloadManager {
   public parallel: boolean;
 
   constructor(path?: string, parallel?: boolean) {
-    this.path = path ?? resolve(__dirname, "../../../downloads");
+    this.path = path ?? process.cwd();
     this.parallel = parallel ?? false;
   }
 
   public async bulk_download(urls: string[]) {
     /**
      * Check If Directory Exist
+     * Not working after packaged
      */
-    this.checkDir();
+    // this.checkDir();
 
     /**
      * Performs Downloads
@@ -85,15 +85,6 @@ export class DownloadManager {
     return regexResult
       ? decodeURIComponent(regexResult[1].replace(regex, ""))
       : "Untitled.osz";
-  }
-  /**
-   * Check If Directory Exist
-   */
-  private checkDir(): void {
-    if (!existsSync(this.path)) {
-      mkdirSync(this.path);
-    }
-    return;
   }
 
   private async impulse(ids: string[], rate: number): Promise<any[]> {

@@ -1,12 +1,15 @@
 {
   "name": "osu-collector-dl",
-  "version": "2.3.0",
-  "main": "./dist/src/index.js",
+  "version": "2.4.0",
+  "main": "./dist/index.js",
   "scripts": {
     "build-test": "npm run build-ts && node .",
     "start": "node .",
-    "test": "npm run build-ts && node ./dist/src/__test/test.js",
-    "build-ts": "tsc -p ."
+    "test": "npm run build-ts && node ./dist/__test/test.js",
+    "build-ts": "tsc -p .",
+    "build-app-win": "npm run build-ts && pkg -t node16-win-x64 -o ./build/win-x64/OCDL.exe ./dist/index.js --public",
+    "build-app-linux": "npm run build-ts && pkg -t node16-linux -o ./build/linux-arm64/OCDL ./dist/index.js --public && npm run cp-dir",
+    "cp-dir": "cp -R ./node_modules/puppeteer/.local-chromium ./build/linux-arm64/puppeteer"
   },
   "license": "MIT",
   "dependencies": {
@@ -16,7 +19,13 @@
     "prompt-sync": "^4.2.0",
     "puppeteer": "^13.5.2"
   },
+  "pkg": {
+    "assets": [
+      "./downloads/**"
+    ]
+  },
   "devDependencies": {
-    "@types/ini": "^1.3.31"
+    "@types/ini": "^1.3.31",
+    "@types/mkdirp": "^1.0.2"
   }
 }

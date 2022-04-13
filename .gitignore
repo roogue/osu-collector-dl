@@ -112,4 +112,4 @@ dist/
 resourcehacker/
 
 #release
-release/
+build/
