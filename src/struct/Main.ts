@@ -15,11 +15,11 @@ export class Main {
   protected osuApi: osu.Api | null;
   protected DownloadManager: DownloadManager;
 
-  constructor(id: number, { parallel = false, path }: Options) {
+  constructor(id: number, { parallel = false, path = null }: Options) {
     this.url = config.osuCollector_url + id;
     this.browser = null;
     this.page = null;
-    this.osuApi = config.api_key 
+    this.osuApi = config.api_key
       ? new osu.Api(config.api_key, { notFoundAsError: true })
       : null;
     this.DownloadManager = new DownloadManager(path, parallel);

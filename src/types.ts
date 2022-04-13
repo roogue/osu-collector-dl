@@ -1,4 +1,4 @@
 export interface Options {
-  parallel?: boolean;
-  path?: string;
+  parallel: boolean;
+  path: string | null;
 }

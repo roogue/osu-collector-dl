@@ -77,7 +77,9 @@ export const config = {
    * dl_impulse_rate - The amount of download requests to be made per burst (Default: 5)
    */
   dl_impulse_rate: Number(DownloadSettings.dl_impulse_rate),
-  directory: DownloadSettings.directory,
+  directory: !!DownloadSettings.directory
+    ? String(DownloadSettings.directory)
+    : null,
 
   /**
    * Wheter Headless Mode Should be Used

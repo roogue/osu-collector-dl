@@ -5,6 +5,9 @@ import { config } from "./config";
   const prompt = require("prompt-sync")({ sigint: true });
   const id = prompt("Please Enter An ID: ");
 
-  const main = new Main(id, { parallel: config.parallel });
+  const main = new Main(id, {
+    parallel: config.parallel,
+    path: config.directory,
+  });
   await main.download();
 })();

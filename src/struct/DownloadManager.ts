@@ -8,7 +8,7 @@ export class DownloadManager {
   public path: string;
   public parallel: boolean;
 
-  constructor(path?: string, parallel?: boolean) {
+  constructor(path: string | null, parallel: boolean) {
     this.path = path ?? process.cwd();
     this.parallel = parallel ?? false;
   }
