@@ -1,6 +1,6 @@
 {
   "name": "osu-collector-dl",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "main": "./dist/index.js",
   "scripts": {
     "build-test": "npm run build-ts && node .",
@@ -8,8 +8,7 @@
     "test": "npm run build-ts && node ./dist/__test/test.js",
     "build-ts": "tsc -p .",
     "build-app-win": "npm run build-ts && pkg -t node16-win-x64 -o ./build/win-x64/OCDL.exe ./dist/index.js --public",
-    "build-app-linux": "npm run build-ts && pkg -t node16-linux -o ./build/linux-arm64/OCDL ./dist/index.js --public && npm run cp-dir",
-    "cp-dir": "cp -R ./node_modules/puppeteer/.local-chromium ./build/linux-arm64/puppeteer"
+    "build-app-linux": "npm run build-ts && pkg -t node16-linux -o ./build/linux-arm64/OCDL ./dist/index.js --public"
   },
   "license": "MIT",
   "dependencies": {
