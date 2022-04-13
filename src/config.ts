@@ -34,8 +34,6 @@ export const config = {
    * If None is Provided, It Will Use Osu Mirror instead (Unstable)
    *
    * This provides a more stable and quicker way of resolving Beatmap to BeatmapSets
-   *
-   * Warning: You should not set your api key here, instead, set it in your config.env file for security reasons.
    */
   api_key: !!OsuApi.key ? String(OsuApi.key) : null,
   /**
