@@ -10,7 +10,7 @@ A Script that automatize the downloads of beatmap in Osu!Collector.
 
 - Download from the latest release, then extract the compressed file.
 
-- Paste your Osu! Api key after the `=` symbols. (Optional)\
+- Paste your Osu! Api key after the `=` symbols. (Optional)
 
 ```ini
 [OsuApi]
