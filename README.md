@@ -10,13 +10,6 @@ A Script that automatize the downloads of beatmap in Osu!Collector.
 
 - Download from the latest release, then extract the compressed file.
 
-- Paste your Osu! Api key after the `=` symbols. (Optional)
-
-```ini
-[OsuApi]
-key = 1a2b3c4d5e6f7g
-```
-
 ## Usage
 
 Run the `OCDL.exe` from the downloaded folder.
@@ -31,26 +24,32 @@ You can also modify the config to have a different speed in fetching or download
 ### Config Explaination
 
 **[OsuApi]**\
+(ONLY USEFUL IF BROWSER IS USED)
+
 `key` - An osu api key.\
--> This ensure a more stable and swift functionality.
+-> Use an official osu api to resolve beatmaps' Id.
 
 **[GeneralSettings]**\
 `parallel` - Whether or not fetches and downloads should be done in **parallel**. \
 -> This is useful as it will speed up the process of downloading/fetching significantly.
 
 **[ScrollSettings]**\
-`optimisedScroll` - Whether or not to use optimised scroll.\
+(ONLY USEFUL IF BROWSER IS USED)
+
+`optimizedScroll` - Whether or not to use optimized scroll.\
 -> This increase the stability and speed of scraping of websites.
 
 `scroll_distance` - The distance to scroll.\
--> This is only useful when optimisedScroll is set to false.\
+-> This is only useful when optimizedScroll is set to false.\
 -> You can lower the value when your internet speed is slow.
 
 `scroll_interval` - The interval of scrolling in ms.\
--> This is only useful when optimisedScroll is set to false.\
+-> This is only useful when optimizedScroll is set to false.\
 -> You can increase the value when your internet speed is slow.
 
 **[RateLimitSettings]**\
+(ONLY USEFUL IF BROWSER IS USED)
+
 `rate_limit` - A rate throttle for amount of requests.\
 -> This is to reduce errors cause by hitting the rate limit when sending requests.\
 -> This is only useful when parallel is set to true.
@@ -73,15 +72,20 @@ You can also modify the config to have a different speed in fetching or download
 -> You can lower the value when error occurs.
 
 **[BrowserSettings]**\
-`headless` - Wheter headless mode should be used.\
+`browser` - Whether or not use a browser\
+-> Using a browser will decrease the speed of process and increase program weight.\
+-> Useful when osu!Collector api is closed to public.
+
+`headless` - Whether headless mode should be used.\
 -> When set to false, browser will be invisible when processes is running.\
 -> Set to false may slightly increase the speed of the process.
 
 ### Default Config
+
 ```ini
 [OsuApi]
 
-key = 
+key =
 
 [GeneralSettings]
 
@@ -89,7 +93,7 @@ parallel = true
 
 [ScrollSettings]
 
-optimisedScroll = true
+optimizedScroll = true
 scroll_distance = 1000
 scroll_interval = 500
 
@@ -106,6 +110,7 @@ dl_impulse_rate = 5
 
 [BrowserSettings]
 
+browser = false
 headless = true
 ```
 
