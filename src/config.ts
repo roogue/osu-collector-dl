@@ -25,7 +25,7 @@ export const config = {
   /**
    * Base Url, Do Not Change.
    */
-  osuCollector_url: "https://osucollector.com/collections/",
+  osuCollector_url: "https://osucollector.com/",
   beatmaps_url: "https://osu.ppy.sh/beatmaps/",
   osuMirror_url: "https://api.chimu.moe/v1/",
 
@@ -40,11 +40,11 @@ export const config = {
    * Scroll Option For Auto Scroll,
    * You can Modify Depends on Your Internet Speed
    *
-   * optimisedScroll - Whether or not to use optimised scroll to increase the fetching speed (Default: true)
-   * scroll_distance - The distance to scroll (Default: 1000). This is only useful when optimisedScroll is false
+   * optimizedScroll - Whether or not to use optimized scroll to increase the fetching speed (Default: true)
+   * scroll_distance - The distance to scroll (Default: 1000). This is only useful when optimizedScroll is false
    * scroll_interval - The interval of scrolling in ms(Default: 500).
    */
-  optimisedScroll: !!ScrollSettings.optimisedScroll,
+  optimizedScroll: !!ScrollSettings.optimizedScroll,
   scroll_distance: Number(ScrollSettings.scroll_distance),
   scroll_interval: Number(ScrollSettings.scroll_interval),
 
@@ -80,10 +80,11 @@ export const config = {
     : null,
 
   /**
-   * Wheter Headless Mode Should be Used
+   * Whether Headless Mode Should be Used
    *
    * When false, browser will be invisible when processes is running.
    * Set to false may slightly increase the speed of the process.
    */
+  browser: !!BrowserSettings.browser,
   headless: !!BrowserSettings.headless,
 };

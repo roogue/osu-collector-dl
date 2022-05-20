@@ -6,106 +6,141 @@ import { Options } from "../types";
 import { sleep, removeDuplicate, pkgFixes } from "../utils/util";
 import { DownloadManager } from "./DownloadManager";
 import axios from "axios";
+import { beatmapsets } from "../types";
 
 export class Main {
-  public url: string;
+  public collectionUrl: string;
+  public collectionApiUrl: string;
   public options: Options;
-  protected browser: Browser | null;
-  protected page: Page | null;
+  protected browser: Browser | null = null;
+  protected page: Page | null = null;
   protected osuApi: osu.Api | null;
   protected DownloadManager: DownloadManager;
 
   constructor(id: number, { parallel = false, path = null }: Options) {
-    this.url = config.osuCollector_url + id;
-    this.browser = null;
-    this.page = null;
+    // url is osuCollector's collection url with id
+    this.collectionUrl = config.osuCollector_url + "collections/" + id;
+
+    // apiUrl is osuCollector's collection api url with id
+    this.collectionApiUrl = config.osuCollector_url + "api/collections/" + id;
+
+    // osu's api, if api key is provided
     this.osuApi = config.api_key
       ? new osu.Api(config.api_key, { notFoundAsError: true })
       : null;
+
+    // Create DownloadManager instance
     this.DownloadManager = new DownloadManager(path, parallel);
+
+    // options
     this.options = { parallel, path };
   }
 
-  private async init(): Promise<void> {
+  private async initBrowser(): Promise<void> {
     /**
-     * Initiate Browser and Page
+     * Initiate Browser and Page (If browser is available)
      */
     const executablePath = pkgFixes();
 
-    this.browser = await puppeteer.launch({
-      headless: config.headless,
-      executablePath,
-    });
+    this.browser = await puppeteer
+      .launch({
+        headless: config.headless,
+        executablePath,
+      })
+      .catch(() => null);
+
+    if (!this.browser) throw {};
+
     this.page = await this.browser.newPage();
+
     await this.page
-      .goto(this.url, { timeout: 0, waitUntil: "domcontentloaded" })
+      .goto(this.collectionUrl, { timeout: 0, waitUntil: "domcontentloaded" })
       .catch(console.error);
   }
 
   private async scrape(): Promise<string[]> {
-    /**
-     * Check Browser and Page Property
-     */
-    if (!this.browser) throw new Error("Browser is not initialized");
-    if (!this.page) throw new Error("Page is not initialized");
+    if (!this.browser) {
+      /**
+       * If No Browser, Make Request to osuCollector Api
+       */
+      const apiRes = await axios
+        .get(this.collectionApiUrl, { responseType: "json" })
+        .then((res) =>
+          res.status === 200 ? (res.data.beatmapsets as beatmapsets[]) : null
+        )
+        .catch(() => null);
 
-    /**
-     * Scroll to Bottom
-     */
-    config.optimisedScroll
-      ? await this.optimisedScroll()
-      : await this.autoScroll();
+      // Map Response To Beatmapsets Ids
+      return apiRes ? apiRes.map((obj) => obj.id.toString()) : [];
+    } else {
+      /**
+       * If Browser, Scrape Page
+       */
+      if (!this.page) throw new Error("Page is not available");
 
-    /**
-     * Evaluate Page Read Contents
-     */
-    const id = await this.page.$$eval(
-      ".sc-eCImPb",
-      (el, config: any) =>
-        el
-          .map((x) => x.getAttribute("href"))
-          .filter((x) => x?.startsWith(config.beatmaps_url))
-          .map((x) => x?.slice(config.beatmaps_url.length)) as string[],
-      config
-    );
+      /**
+       * Scroll to Bottom
+       */
+      config.optimizedScroll
+        ? await this.optimizedScroll()
+        : await this.autoScroll();
 
-    return id;
+      /**
+       * Evaluate Page Read Contents
+       */
+      const beatmapIds = await this.page.$$eval(
+        ".sc-eCImPb",
+        (el, config: any) =>
+          el
+            .map((x) => x.getAttribute("href"))
+            .filter((x) => x?.startsWith(config.beatmaps_url))
+            .map((x) => x?.slice(config.beatmaps_url.length)) as string[],
+        config
+      );
+
+      /**
+       * Close Browser
+       */
+      await this.closeBrowser();
+
+      /**
+       * Resolve BeatmapIds Into BeatmapSets
+       */
+      const beatmapsSetIds = await this.resolveBeatmapSetsId(beatmapIds);
+      return removeDuplicate(beatmapsSetIds).filter((a) => a);
+    }
   }
 
   public async download(): Promise<void> {
-    /**
-     * Initiate Browser and Page
-     */
-    console.log("Initiating Browser...");
-    await this.init();
-    console.log("Headless Browser Launched.");
+    if (config.browser) {
+      /**
+       * Initiate Browser and Page
+       */
+      console.log("Initiating Browser...");
+      await this.initBrowser()
+        .then(() => {
+          console.log("Headless Browser Launched.");
+        })
+        .catch(() => {
+          console.warn(
+            "Browser is not available. Switching to browser-less method"
+          );
+        });
+    }
 
     /**
      * Scrape Page For Beatmap IDs
      */
     console.log("Scraping...");
-    const beatmapsId = await this.scrape();
-    if (!beatmapsId.length) throw new Error("No Beatmap Found");
-    console.log(beatmapsId.length, " Beatmaps Found.");
+    const ids = await this.scrape();
+    if (!ids.length) throw new Error("No BeatmapSets Found");
 
-    /**
-     * Close Browser
-     */
-    await this.closeBrowser();
-
-    /**
-     * Resolve BeatmapIds Into BeatmapSets
-     */
-    console.log("Resolving Beatmaps...");
-    const beatmapsSetIds = await this.resolveBeatmapSetsId(beatmapsId);
-    const ids = removeDuplicate(beatmapsSetIds).filter((a) => a);
-    if (!beatmapsSetIds.length) throw new Error("No Beatmap Found");
     console.log(ids);
     console.log("==============================");
     console.log(ids.length, " BeatmapSets Found.");
 
     /**
-     * Perfoms Download
+     * Performs Download
      */
     console.log(`Downloading to Path: '${this.DownloadManager.path}'`);
     await this.downloadBeatmapSets(ids);
@@ -216,7 +251,7 @@ export class Main {
     );
   }
 
-  private async optimisedScroll(): Promise<void> {
+  private async optimizedScroll(): Promise<void> {
     if (!this.page) throw new Error("Page is not initialized");
     /**
      * Perform Auto Scroll
