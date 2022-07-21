@@ -113,3 +113,15 @@ resourcehacker/
 
 #release
 build/
+
+#config.json
+config.json
+
+#yarn
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
