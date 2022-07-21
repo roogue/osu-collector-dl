@@ -1,9 +1,6 @@
-export interface Options {
-  parallel: boolean;
-  path: string | null;
+export interface BeatMapSet {
+  id: number;
+  beatmaps: object[];
 }
 
-export interface beatmapsets {
-  id: number;
-  beatmaps: object[]
-}
+export type ResponseJson = Record<string, any>;
