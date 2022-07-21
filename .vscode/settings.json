@@ -3,6 +3,8 @@
         "Beatmap",
         "beatmaps",
         "beatmapsets",
-        "domcontentloaded"
+        "domcontentloaded",
+        "Ocdl",
+        "undici"
     ]
 }
