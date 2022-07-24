@@ -1,25 +1,24 @@
 {
   "name": "osu-collector-dl",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "main": "./dist/index.js",
   "scripts": {
-    "build-test": "yarn build-ts && node .",
+    "build": "yarn build-ts && yarn run start",
     "start": "node .",
     "test": "yarn build-ts && node ./dist/__test/test.js",
     "build-ts": "tsc -p .",
-    "build-app-win": "yarn build-ts && pkg -t node16-win-x64 -o ./build/win-x64/OCDL.exe ./dist/index.js --public",
-    "build-app-linux": "yarn build-ts && pkg -t node16-linux -o ./build/linux-arm64/OCDL ./dist/index.js --public"
+    "build-app-win": "yarn build-ts && pkg -t node16-win-x64 -o ./build/win-x64/osu-collector-dl.exe ./dist/index.js --public",
+    "build-app-linux": "yarn build-ts && pkg -t node16-linux -o ./build/linux-arm64/osu-collector-dl ./dist/index.js --public"
   },
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.26.1",
-    "ini": "^3.0.0",
-    "node-osu": "^2.2.1",
+    "csbinary": "^2.1.4",
     "prompt-sync": "^4.2.0",
-    "puppeteer": "^13.5.2"
+    "tslib": "^2.4.0",
+    "undici": "^5.8.0"
   },
   "devDependencies": {
-    "@types/ini": "^1.3.31",
-    "@types/mkdirp": "^1.0.2"
-  }
+    "@types/node": "^18.0.6"
+  },
+  "packageManager": "yarn@3.2.1"
 }
