@@ -4,22 +4,27 @@ import { Response, fetch } from "undici";
 import _path from "path";
 import Logger from "./Logger";
 import OcdlError from "../struct/OcdlError";
+import type { Collection } from "../types";
 
 export class DownloadManager {
   path: string;
   parallel: boolean;
   impulseRate: number;
   osuMirrorUrl: string;
+  collection: Collection;
 
-  constructor(config: Config) {
-    this.path = config.directory;
+  constructor(config: Config, collection: Collection) {
+    this.path = _path.join(config.directory, collection.name);
     this.parallel = config.parallel;
     this.impulseRate = config.dl_impulse_rate;
-    this.osuMirrorUrl = config.osuMirror_url;
+    this.osuMirrorUrl = config.osuMirrorApiUrl;
+    this.collection = collection;
   }
 
-  public async bulk_download(ids: string[]) {
-    const urls = ids.map((id) => this.osuMirrorUrl + "download/" + id);
+  public async bulk_download() {
+    const urls = this.collection.beatmapsets.map(
+      (beatmapSet) => this.osuMirrorUrl + "download/" + beatmapSet.id
+    );
 
     if (this.parallel) {
       // Impulsive download if url length is more then this.impulseRate
@@ -47,7 +52,7 @@ export class DownloadManager {
       if (!this.checkIfDirectoryExists()) {
         console.error("No directory found: " + this.path);
         console.log("Use current working directory instead.");
-        this.path = process.cwd()
+        this.path = process.cwd();
       }
       // Create write stream
       const file = createWriteStream(_path.join(this.path, fileName));
