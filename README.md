@@ -18,14 +18,18 @@ For an example: Insert "44" if you want to download from this link: https://osuc
 You can customize some settings which affect in download speed and location of the downloaded osu beatmap.
 
 Below is the data stored in `config.json`, you can modify it to your flavor.
+
 ```json
 {
   "parallel": true,
   "dl_impulse_rate": 10,
-  "directory": ""
+  "directory": "",
+  "mode": 1
 }
 ```
+
 #### Explanation:
+
 [ parallel: true | false ] - Whether or not downloads should be done in parallel. \
 -> If parallel is true, multiple downloads will process at the same time. If false, the program will download only one beatmap set at a time.
 
