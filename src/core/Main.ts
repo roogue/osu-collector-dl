@@ -2,23 +2,27 @@ import { DownloadManager } from "./DownloadManager";
 import { request } from "undici";
 import type Config from "../struct/Config";
 import Logger from "./Logger";
-import type { BeatMapSet, ResponseJson } from "../types";
+import type { BeatMapV2, Collection, BeatMapV2ResData } from "../types";
 import type { ResponseData } from "undici/types/dispatcher";
+import OsdbGenerator from "./OsdbGenerator";
+import OcdlError from "../struct/OcdlError";
+import { mkdirSync } from "fs";
+import _path from "path";
+import Util from "../util";
 
 export default class Main {
-  collectionUrl: string;
   collectionApiUrl: string;
-  protected DownloadManager: DownloadManager;
+  collectionApiUrlV2: string;
+  config: Config;
 
   constructor(id: number, config: Config) {
-    // url is osuCollector's collection url with id
-    this.collectionUrl = config.osuCollector_url + "collections/" + id;
+    // Quick hand api url for faster fetching
+    this.collectionApiUrl = config.osuCollectorApiUrl + id;
 
-    // apiUrl is osuCollector's collection api url with id
-    this.collectionApiUrl = config.osuCollector_url + "api/collections/" + id;
+    // Api url for full information
+    this.collectionApiUrlV2 = config.osuCollectorApiUrl + id + "/beatmapsV2";
 
-    // Create DownloadManager instance
-    this.DownloadManager = new DownloadManager(config);
+    this.config = config;
   }
 
   async run(): Promise<void> {
@@ -26,31 +30,83 @@ export default class Main {
     const apiRes = await this.fetchCollection().catch(() => null);
     if (!apiRes || apiRes.statusCode !== 200)
       return Logger.stayAliveLog(
-        `Requesting collection failed. Status Code: ${apiRes?.statusCode}`
+        `Request collection failed. Status Code: ${apiRes?.statusCode}`
       );
-
     // Map beatmapSet ids
-    const resData: ResponseJson | null = await apiRes.body
+    const resData: Collection | null = await apiRes.body
       .json()
       .catch(() => null);
-    if (!resData || !resData.beatmapsets)
+    if (!resData || !resData.beatmapsets?.length)
       return Logger.stayAliveLog("No beatmap set found.");
 
-    // Map beatmapSet ids
-    const beatMapSetIds = (resData.beatmapsets as BeatMapSet[]).map((data) =>
-      data.id.toString()
-    );
+    // Create folder
+    mkdirSync(_path.join(this.config.directory, resData.name));
 
-    console.log(beatMapSetIds.length + " BeatmapSet Found, Downloading...");
+    if (this.config.mode === 2) {
+      // v2BeatMapInfo Cache
+      const beatMapV2: BeatMapV2[] = [];
 
-    // Download beatmapSets
-    await this.DownloadManager.bulk_download(beatMapSetIds);
+      let hasMorePage = true;
+      let cursor = 0;
+      while (hasMorePage) {
+        // Request v2 collection
+        const v2ApiResponse = await this.fetchCollectionV2(cursor).catch(
+          () => null
+        );
+
+        if (!v2ApiResponse || v2ApiResponse.statusCode !== 200)
+          return Logger.stayAliveLog(
+            `Request collection V2 failed. Status Code: ${v2ApiResponse?.statusCode}`
+          );
+
+        const v2ResData: BeatMapV2ResData | null =
+          await v2ApiResponse.body.json();
+        if (!v2ResData) return Logger.stayAliveLog("Bad response.");
+
+        try {
+          const { nextPageCursor, hasMore, beatmaps } = v2ResData;
+          if (!Util.isBoolean(hasMore)) {
+            return Logger.stayAliveLog("Bad response."); // As precaution if data is inaccurate
+          }
+
+          // Set property
+          hasMorePage = hasMore;
+          cursor = nextPageCursor;
+
+          // Add beatmap to cache
+          beatMapV2.push(...beatmaps);
+
+          console.log("Fetched " + beatMapV2.length + " Beatmaps");
+        } catch (e) {
+          Logger.generateErrorLog(new OcdlError("REQUEST_DATA_FAILED", e));
+        }
+      }
+      // Generate .osdb
+      console.log("Generating .osdb file...");
+      const generator = new OsdbGenerator(this.config, resData, beatMapV2);
+      await generator.writeOsdb();
+      console.log("Generated!");
+    }
+
+    // Download beatmapSet
+    console.log("Start Downloading...");
+    const downloadManager = new DownloadManager(this.config, resData);
+    await downloadManager.bulk_download();
 
     return;
   }
 
   private async fetchCollection(): Promise<ResponseData> {
-    // Fetch with undici
     return await request(this.collectionApiUrl, { method: "GET" });
+  }
+
+  private async fetchCollectionV2(cursor: number = 0): Promise<ResponseData> {
+    return await request(this.collectionApiUrlV2, {
+      method: "GET",
+      query: {
+        perPage: 100,
+        cursor,
+      },
+    });
   }
 }
