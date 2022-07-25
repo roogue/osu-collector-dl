@@ -6,7 +6,7 @@ import type { BeatMapV2, Collection, BeatMapV2ResData } from "../types";
 import type { ResponseData } from "undici/types/dispatcher";
 import OsdbGenerator from "./OsdbGenerator";
 import OcdlError from "../struct/OcdlError";
-import { mkdirSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import _path from "path";
 import Util from "../util";
 
@@ -40,7 +40,13 @@ export default class Main {
       return Logger.stayAliveLog("No beatmap set found.");
 
     // Create folder
-    mkdirSync(_path.join(this.config.directory, resData.name));
+    try {
+      resData.name = Util.replaceForbiddenChars(resData.name);
+      const path = _path.join(this.config.directory, resData.name);
+      if (!existsSync(path)) mkdirSync(path);
+    } catch (e) {
+      Logger.generateErrorLog(new OcdlError("FOLDER_GENERATION_FAILED", e));
+    }
 
     if (this.config.mode === 2) {
       // v2BeatMapInfo Cache
