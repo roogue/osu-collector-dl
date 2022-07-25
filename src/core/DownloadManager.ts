@@ -22,7 +22,7 @@ export class DownloadManager {
     this.collection = collection;
   }
 
-  public async bulk_download() {
+  public async bulk_download(): Promise<void> {
     const urls = this.collection.beatmapsets.map(
       (beatmapSet) => this.osuMirrorUrl + "download/" + beatmapSet.id
     );
