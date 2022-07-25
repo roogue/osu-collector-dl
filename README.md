@@ -15,9 +15,10 @@ For an example: Insert "44" if you want to download from this link: https://osuc
 
 ## Config
 
-You can customize some settings which affect in download speed and location of the downloaded osu beatmap.
+You can customize some settings which affect in download speed, location of the downloaded osu beatmaps and working mode.
 
-Below is the data stored in `config.json`, you can modify it to your flavor.
+Below is the data stored in `config.json`, you can modify it to your flavor. \
+(Tips: Right click and open with notepad to open .json file.)
 
 ```json
 {
