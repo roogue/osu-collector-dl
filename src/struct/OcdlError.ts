@@ -3,6 +3,7 @@ export enum ErrorType {
   "REQUEST_DOWNLOAD_FAILED" = "Error occurred while requesting download",
   "GENERATE_OSDB_FAILED" = "Error occurred while generating .osdb",
   "REQUEST_DATA_FAILED" = "Error occurred while requesting data",
+  "FOLDER_GENERATION_FAILED" = "Error occurred while generating folder",
 }
 
 const getMessage = (type: keyof typeof ErrorType, error: any): string => {
