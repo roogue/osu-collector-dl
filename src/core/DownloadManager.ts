@@ -5,6 +5,7 @@ import _path from "path";
 import Logger from "./Logger";
 import OcdlError from "../struct/OcdlError";
 import type { Collection } from "../types";
+import Util from "../util";
 
 export class DownloadManager {
   path: string;
@@ -40,9 +41,18 @@ export class DownloadManager {
   private async _dl(url: string): Promise<void> {
     // Request download
     console.log("Requesting: " + url);
-    const res = await fetch(url, { method: "GET" });
-    if (res.status !== 200 || !res.body)
-      return console.error("Requesting failed: " + url);
+    let res = await fetch(url, { method: "GET" });
+    if (!this.isValidResponse(res)) {
+      // Sometimes server failed with 503 status code, retrying is needed
+      console.error("Requesting failed: " + url);
+      console.log("Retrying: " + url);
+      res = await fetch(url, { method: "GET" });
+
+      if (!this.isValidResponse(res)) {
+        console.error("Requesting failed: " + url);
+        return;
+      }
+    }
 
     try {
       // Get file name
@@ -57,7 +67,7 @@ export class DownloadManager {
       // Create write stream
       const file = createWriteStream(_path.join(this.path, fileName));
 
-      for await (const chunk of res.body) {
+      for await (const chunk of res.body!) {
         //  Write to file
         if (!chunk) continue;
         file.write(chunk);
@@ -76,16 +86,15 @@ export class DownloadManager {
     const contentDisposition = headers.get("content-disposition");
 
     // Extract filename from content-disposition header.
-    const result = contentDisposition
-      ? /filename="(.+)"/g.exec(contentDisposition)
-      : "Untitled.osz";
+    if (contentDisposition) {
+      const result = /filename="(.+)"/g.exec(contentDisposition);
 
-    // Forbidden file name regex
-    const regex = /( |\/|<|>|:|"|\\|\||\?|\*)+/g;
+      return result
+        ? decodeURIComponent(Util.replaceForbiddenChars(result[1]))
+        : "Untitled.osz";
+    }
 
-    return result
-      ? decodeURIComponent(result[1].replace(regex, ""))
-      : "Untitled.osz";
+    return "Untitled.osz";
   }
 
   private async impulse(ids: string[], rate: number): Promise<any[]> {
@@ -114,5 +123,9 @@ export class DownloadManager {
 
   private checkIfDirectoryExists(): boolean {
     return existsSync(this.path);
+  }
+
+  private isValidResponse(res: Response): boolean {
+    return res.status === 200 && !!res.body;
   }
 }
