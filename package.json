@@ -1,6 +1,6 @@
 {
   "name": "osu-collector-dl",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "main": "./dist/index.js",
   "scripts": {
     "build": "yarn build-ts && yarn run start",
