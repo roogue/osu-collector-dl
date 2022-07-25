@@ -1,3 +1,5 @@
+// * These typings are incomplete, but they are enough to get the app working.
+// * Reference: https://github.com/roogue/osu-collector-node/blob/main/src/typings/Collection.ts
 export interface BeatMap {
   checksum: string;
   id: number;
