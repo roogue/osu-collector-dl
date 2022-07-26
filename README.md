@@ -41,7 +41,8 @@ Below is the data stored in `config.json`, you can modify it to your flavor. \
 -> Remember the double quotes!! If none was provided, the current working directory would be used.
 
 [ mode: 1 | 2 ] - Which mode should the program works on. \
--> When mode 1 is selected, only download of the beatmap sets will be progressed. If mode 2 is selected, the download will still be progressed but with an additional generation of .osdb file.
+-> When mode 1 is selected, only download of the beatmap sets will be progressed. If mode 2 is selected, the download will still be progressed but with an additional generation of .osdb file. \
+Note: You can still choose a mode on the terminal.
 
 ## License
 
