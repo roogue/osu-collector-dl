@@ -4,7 +4,7 @@ export default class Util {
   }
 
   static replaceForbiddenChars(str: string): string {
-    const regex = /[ \/<>:"\|?*]+/g;
+    const regex = /[ \\\/<>:"\|?*]+/g;
     return str.replace(regex, "");
   }
 }
