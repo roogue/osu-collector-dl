@@ -1,5 +1,7 @@
 import Main from "./core/Main";
 import { config } from "./config";
+import Logger from "./core/Logger";
+import OcdlError from "./struct/OcdlError";
 
 // Prompt user for id and mode
 const prompt = require("prompt-sync")({ sigint: true });
@@ -33,19 +35,25 @@ const getMode = (): number | null => {
 
 (async () => {
   let id: number | null = null;
-  // Get id
-  while (id === null) {
-    id = getId();
-  }
 
-  let mode: number | null = null;
-  // Get mode
-  while (mode === null) {
-    mode = getMode();
-  }
+  try {
+    // Get id
+    while (id === null) {
+      id = getId();
+    }
 
-  config.mode = mode;
+    let mode: number | null = null;
+    // Get mode
+    while (mode === null) {
+      mode = getMode();
+    }
+
+    config.mode = mode;
+  } catch (e) {
+    Logger.generateErrorLog(new OcdlError("GET_USER_INPUT_FAILED", e));
+    return;
+  }
+  
   const main = new Main(id, config);
-
   await main.run();
 })();

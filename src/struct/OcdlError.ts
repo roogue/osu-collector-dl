@@ -1,4 +1,5 @@
 export enum ErrorType {
+  "GET_USER_INPUT_FAILED" = "Error occurred while getting user input",
   "RESOLVE_JSON_FAILED" = "Error occurred while resolving res body to json",
   "REQUEST_DOWNLOAD_FAILED" = "Error occurred while requesting download",
   "GENERATE_OSDB_FAILED" = "Error occurred while generating .osdb",
