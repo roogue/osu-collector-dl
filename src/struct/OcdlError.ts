@@ -5,6 +5,7 @@ export enum ErrorType {
   "GENERATE_OSDB_FAILED" = "Error occurred while generating .osdb",
   "REQUEST_DATA_FAILED" = "Error occurred while requesting data",
   "FOLDER_GENERATION_FAILED" = "Error occurred while generating folder",
+  "FILE_NAME_EXTRACTION_FAILED" = "Error occurred while extracting file name",
 }
 
 const getMessage = (type: keyof typeof ErrorType, error: any): string => {
