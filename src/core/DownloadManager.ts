@@ -97,16 +97,26 @@ export class DownloadManager {
     const headers = res.headers;
     const contentDisposition = headers.get("content-disposition");
 
+    let fileName = "Untitled.osz"; // Default file name
     // Extract filename from content-disposition header.
     if (contentDisposition) {
       const result = /filename="(.+)"/g.exec(contentDisposition);
 
-      return result
-        ? decodeURIComponent(Util.replaceForbiddenChars(result[1]))
-        : "Untitled.osz";
+      if (result) {
+        try {
+          const replaced = Util.replaceForbiddenChars(result[1]);
+          const decoded = decodeURIComponent(replaced);
+
+          fileName = decoded;
+        } catch (e) {
+          Logger.generateErrorLog(
+            new OcdlError("FILE_NAME_EXTRACTION_FAILED", e)
+          );
+        }
+      }
     }
 
-    return "Untitled.osz";
+    return fileName;
   }
 
   private async impulse(ids: string[], rate: number): Promise<any[]> {
