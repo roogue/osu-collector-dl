@@ -99,6 +99,10 @@ export default class Main {
     const downloadManager = new DownloadManager(this.config, resData);
     await downloadManager.bulk_download();
 
+    console.log("Download Finished!");
+    const prompt = require("prompt-sync")({ sigint: true });
+    prompt("Press Enter to exit.");
+
     return;
   }
 
