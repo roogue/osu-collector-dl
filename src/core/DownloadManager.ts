@@ -30,7 +30,7 @@ export class DownloadManager {
     if (this.parallel) {
       // Impulsive download if url length is more then this.impulseRate
       urls.length > this.impulseRate
-        ? this.impulse(urls, this.impulseRate)
+        ? await this.impulse(urls, this.impulseRate)
         : await Promise.all(urls.map((url) => this._dl(url)));
     } else {
       // Sequential download
@@ -41,15 +41,16 @@ export class DownloadManager {
   private async _dl(url: string): Promise<void> {
     // Request download
     console.log("Requesting: " + url);
-    let res = await fetch(url, { method: "GET" });
+    let res = await fetch(url, { method: "GET" }).catch();
     if (!this.isValidResponse(res)) {
       // Sometimes server failed with 503 status code, retrying is needed
       console.error("Requesting failed: " + url);
       console.log("Retrying: " + url);
-      res = await fetch(url, { method: "GET" });
+      res = await fetch(url, { method: "GET" }).catch();
 
       if (!this.isValidResponse(res)) {
         console.error("Requesting failed: " + url);
+        Logger.generateMissingLog(this.path, url);
         return;
       }
     }
@@ -66,12 +67,23 @@ export class DownloadManager {
       }
       // Create write stream
       const file = createWriteStream(_path.join(this.path, fileName));
+      file.on("error", (err) => {
+        console.error(
+          "This file could not be downloaded: " +
+            fileName +
+            " Due to error: " +
+            err
+        );
+      });
 
       for await (const chunk of res.body!) {
         //  Write to file
         if (!chunk) continue;
         file.write(chunk);
       }
+
+      // End the write stream
+      file.end();
 
       console.log("Downloaded: " + url);
     } catch (e) {
@@ -103,7 +115,7 @@ export class DownloadManager {
     const perLen = ids.length / rate;
 
     for (let i = 0; i < perLen; i++) {
-      const promises: Promise<any>[] = [];
+      const promises: Promise<void>[] = [];
       /**
        * Bursting Rate
        */
