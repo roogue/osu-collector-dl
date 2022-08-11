@@ -5,6 +5,7 @@ export default class Config {
   parallel: boolean;
   osuCollectorApiUrl: string;
   osuMirrorApiUrl: string;
+  altOsuMirrorUrl: string;
   dl_impulse_rate: number;
   directory: string;
   mode: number;
@@ -15,7 +16,9 @@ export default class Config {
     this.osuCollectorApiUrl = "https://osucollector.com/api/collections/";
 
     // Osumirror's api url for download beatmap
-    this.osuMirrorApiUrl = "https://api.chimu.moe/v1/";
+    this.osuMirrorApiUrl = "https://api.chimu.moe/v1/download/";
+
+    this.altOsuMirrorUrl = "https://kitsu.moe/api/d/";
 
     // Whether download process should be done in parallel
     this.parallel = Util.isBoolean(object?.parallel) ? object!.parallel : true;

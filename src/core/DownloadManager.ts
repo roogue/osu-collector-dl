@@ -12,6 +12,7 @@ export class DownloadManager {
   parallel: boolean;
   impulseRate: number;
   osuMirrorUrl: string;
+  altOsuMirrorUrl: string;
   collection: Collection;
 
   constructor(config: Config, collection: Collection) {
@@ -19,38 +20,42 @@ export class DownloadManager {
     this.parallel = config.parallel;
     this.impulseRate = config.dl_impulse_rate;
     this.osuMirrorUrl = config.osuMirrorApiUrl;
+    this.altOsuMirrorUrl = config.altOsuMirrorUrl;
     this.collection = collection;
   }
 
   public async bulk_download(): Promise<void> {
-    const urls = this.collection.beatmapsets.map(
-      (beatmapSet) => this.osuMirrorUrl + "download/" + beatmapSet.id
-    );
+    const ids = this.collection.beatmapsets.map((beatmapSet) => beatmapSet.id);
 
     if (this.parallel) {
       // Impulsive download if url length is more then this.impulseRate
-      urls.length > this.impulseRate
-        ? await this.impulse(urls, this.impulseRate)
-        : await Promise.all(urls.map((url) => this._dl(url)));
+      ids.length > this.impulseRate
+        ? await this.impulse(ids, this.impulseRate)
+        : await Promise.all(ids.map((id) => this._dl(id)));
     } else {
       // Sequential download
-      for (let i = 0; i < urls.length; i++) await this._dl(urls[i]);
+      for (let i = 0; i < ids.length; i++) await this._dl(ids[i]);
     }
   }
 
-  private async _dl(url: string): Promise<void> {
+  private async _dl(id: number): Promise<void> {
+    let url = this.osuMirrorUrl + id;
+
     // Request download
     console.log("Requesting: " + url);
     let res = await fetch(url, { method: "GET" }).catch();
     if (!this.isValidResponse(res)) {
       // Sometimes server failed with 503 status code, retrying is needed
       console.error("Requesting failed: " + url);
+
+      // Use alternative mirror url
+      url = this.altOsuMirrorUrl + id;
       console.log("Retrying: " + url);
       res = await fetch(url, { method: "GET" }).catch();
 
       if (!this.isValidResponse(res)) {
         console.error("Requesting failed: " + url);
-        Logger.generateMissingLog(this.path, url);
+        Logger.generateMissingLog(this.path, id.toString());
         return;
       }
     }
@@ -119,7 +124,7 @@ export class DownloadManager {
     return fileName;
   }
 
-  private async impulse(ids: string[], rate: number): Promise<any[]> {
+  private async impulse(ids: number[], rate: number): Promise<any[]> {
     const downloaded: any[] = [];
 
     const perLen = ids.length / rate;

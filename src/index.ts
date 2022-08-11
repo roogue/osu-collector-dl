@@ -35,6 +35,7 @@ const getMode = (): number | null => {
 
 (async () => {
   let id: number | null = null;
+  let mode: number | null = null;
 
   try {
     // Get id
@@ -42,7 +43,6 @@ const getMode = (): number | null => {
       id = getId();
     }
 
-    let mode: number | null = null;
     // Get mode
     while (mode === null) {
       mode = getMode();

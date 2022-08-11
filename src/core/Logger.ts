@@ -36,12 +36,16 @@ export default class Logger {
     return existsSync(Logger.errorLogPath);
   }
 
-  static generateMissingLog(folder: string, url: string): boolean {
+  static generateMissingLog(folder: string, id: string): boolean {
     const path = _path.join(folder, Logger.missingLogPath);
+    const url = `https://osu.ppy.sh/beatmapsets/${id}`;
 
     try {
       if (!existsSync(path)) {
-        writeFileSync(path, `=== Missing Log ===\n${url}\n`);
+        writeFileSync(
+          path,
+          `=== Missing Log ===\n[ Try to download manually ]\n${url}\n`
+        );
       } else {
         appendFileSync(path, `${url}\n`);
       }
