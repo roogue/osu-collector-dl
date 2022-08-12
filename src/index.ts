@@ -22,18 +22,22 @@ const getMode = (): number | null => {
         config.mode === 2 ? "Yes" : "No"
       }): `
     )
-  );
+  ).toLowerCase();
   // Select default mode if user doesn't enter anything
   if (!mode) return config.mode;
   // Check if user entered valid mode
-  if (["n", "no", "1"].includes(mode.toLowerCase())) return 1;
-  if (["y", "yes", "ass", "2"].includes(mode.toLowerCase())) return 2;
+  if (["n", "no", "1"].includes(mode)) return 1;
+  if (["y", "yes", "ass", "2"].includes(mode)) return 2;
 
   console.log('Invalid mode, please type "y" or "n".');
   return null;
 };
 
 (async () => {
+  // Get version from package.json
+  const version = (require("../package.json")?.version ?? "Unknown") as string;
+  console.log(`=== osu-collector-dl v${version} ===`);
+
   let id: number | null = null;
   let mode: number | null = null;
 
@@ -53,7 +57,7 @@ const getMode = (): number | null => {
     Logger.generateErrorLog(new OcdlError("GET_USER_INPUT_FAILED", e));
     return;
   }
-  
+
   const main = new Main(id, config);
   await main.run();
 })();
