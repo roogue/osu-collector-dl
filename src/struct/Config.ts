@@ -18,6 +18,7 @@ export default class Config {
     // Osumirror's api url for download beatmap
     this.osuMirrorApiUrl = "https://api.chimu.moe/v1/download/";
 
+    // alt Osu mirror url
     this.altOsuMirrorUrl = "https://kitsu.moe/api/d/";
 
     // Whether download process should be done in parallel
@@ -51,7 +52,7 @@ export default class Config {
         Config.configFilePath,
         JSON.stringify({
           parallel: true,
-          dl_impulse_rate: 10,
+          dl_impulse_rate: 5,
           directory: process.cwd(),
           mode: 1,
         })
