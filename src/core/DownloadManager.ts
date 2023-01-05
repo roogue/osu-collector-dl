@@ -105,7 +105,7 @@ export class DownloadManager {
     let fileName = "Untitled.osz"; // Default file name
     // Extract filename from content-disposition header.
     if (contentDisposition) {
-      const result = /filename="(.+)"/g.exec(contentDisposition);
+      const result = /filename=([^;]+)/g.exec(contentDisposition);
 
       if (result) {
         try {
