@@ -1,31 +1,33 @@
 import { createWriteStream, existsSync } from "fs";
-import type Config from "../struct/Config";
 import { Response, fetch } from "undici";
 import _path from "path";
 import Logger from "./Logger";
 import OcdlError from "../struct/OcdlError";
-import type { Collection } from "../types";
 import Util from "../util";
+import type Monitor from "./Monitor";
+import { config } from "../config";
+import EventEmitter from "events";
 
-export class DownloadManager {
+export class DownloadManager extends EventEmitter {
+  monitor: Monitor;
   path: string;
   parallel: boolean;
   impulseRate: number;
   osuMirrorUrl: string;
   altOsuMirrorUrl: string;
-  collection: Collection;
 
-  constructor(config: Config, collection: Collection) {
-    this.path = _path.join(config.directory, collection.name);
+  constructor(monitor: Monitor) {
+    super();
+    this.monitor = monitor;
+    this.path = _path.join(config.directory, monitor.collection.name);
     this.parallel = config.parallel;
     this.impulseRate = config.dl_impulse_rate;
     this.osuMirrorUrl = config.osuMirrorApiUrl;
     this.altOsuMirrorUrl = config.altOsuMirrorUrl;
-    this.collection = collection;
   }
 
   public async bulk_download(): Promise<void> {
-    const ids = this.collection.beatmapsets.map((beatmapSet) => beatmapSet.id);
+    const ids = Array.from(this.monitor.collection.beatMapSets.keys());
 
     if (this.parallel) {
       // Impulsive download if url length is more then this.impulseRate
@@ -92,9 +94,7 @@ export class DownloadManager {
 
       console.log("Downloaded: " + url);
     } catch (e) {
-      Logger.generateErrorLog(new OcdlError("REQUEST_DOWNLOAD_FAILED", e));
-    } finally {
-      return;
+      throw new OcdlError("DOWNLOAD_FAILED", e);
     }
   }
 
@@ -105,7 +105,7 @@ export class DownloadManager {
     let fileName = "Untitled.osz"; // Default file name
     // Extract filename from content-disposition header.
     if (contentDisposition) {
-      const result = /filename="(.+)"/g.exec(contentDisposition);
+      const result = /filename=([^;]+)/g.exec(contentDisposition);
 
       if (result) {
         try {
@@ -114,9 +114,7 @@ export class DownloadManager {
 
           fileName = decoded;
         } catch (e) {
-          Logger.generateErrorLog(
-            new OcdlError("FILE_NAME_EXTRACTION_FAILED", e)
-          );
+          throw new OcdlError("FILE_NAME_EXTRACTION_FAILED", e);
         }
       }
     }
