@@ -109,10 +109,10 @@ export class DownloadManager {
 
       if (result) {
         try {
-          const replaced = Util.replaceForbiddenChars(result[1]);
-          const decoded = decodeURIComponent(replaced);
+          const decoded = decodeURIComponent(result[1]);
+          const replaced = Util.replaceForbiddenChars(decoded);
 
-          fileName = decoded;
+          fileName = replaced;
         } catch (e) {
           Logger.generateErrorLog(
             new OcdlError("FILE_NAME_EXTRACTION_FAILED", e)
