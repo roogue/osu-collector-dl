@@ -1,24 +1,21 @@
 import { BinaryWriter, File, IFile } from "csbinary";
 import { openSync, writeFileSync } from "fs";
-import type Config from "../struct/Config";
-import OcdlError from "../struct/OcdlError";
-import { BeatMapV2, Collection, ModeByte } from "../types";
-import Logger from "./Logger";
+import { config } from "../config";
 import _path from "path";
+import type Monitor from "./Monitor";
 
 export default class OsdbGenerator {
   filePath: string;
   fileName: string;
   file: IFile;
   writer: BinaryWriter;
-  collection: Collection;
-  beatMaps: BeatMapV2[];
+  monitor: Monitor;
 
-  constructor(config: Config, collection: Collection, beatMaps: BeatMapV2[]) {
-    this.fileName = collection.name + ".osdb";
+  constructor(monitor: Monitor) {
+    this.fileName = monitor.collection.name + ".osdb";
     this.filePath = _path.join(
       config.directory,
-      collection.name, // Folder name
+      monitor.collection.name, // Folder name
       this.fileName
     );
     // Create file
@@ -28,8 +25,7 @@ export default class OsdbGenerator {
 
     this.writer = new BinaryWriter(this.file);
 
-    this.collection = collection;
-    this.beatMaps = beatMaps;
+    this.monitor = monitor;
   }
 
   // * Refer https://github.com/Piotrekol/CollectionManager/blob/master/CollectionManagerDll/Modules/FileIO/FileCollections/OsdbCollectionHandler.cs#L89
@@ -42,43 +38,47 @@ export default class OsdbGenerator {
       this.writer.writeDouble(this.toOADate(new Date()));
 
       // Editor
-      this.writer.writeString(this.collection.uploader.username);
+      this.writer.writeString(this.monitor.collection.uploader.username);
 
       // Num of collections
       this.writer.writeInt32(1); // Always 1
 
       // Name
-      this.writer.writeString(this.collection.name);
+      this.writer.writeString(this.monitor.collection.name);
 
       // Beatmap count
-      this.writer.writeInt32(this.beatMaps.length);
+      this.writer.writeInt32(this.monitor.collection.beatMapCount);
 
-      for (const beatmap of this.beatMaps) {
-        // beatmapId
-        this.writer.writeInt32(beatmap.id);
+      this.monitor.collection.beatMapSets.forEach(
+        (beatMapSet, beatMapSetId) => {
+          beatMapSet.beatMaps.forEach((beatmap, beatMapId) => {
+            // BeatmapId
+            this.writer.writeInt32(beatMapId);
 
-        // beatmapSetId
-        this.writer.writeInt32(beatmap.beatmapset_id);
+            // BeatmapSetId
+            this.writer.writeInt32(beatMapSetId);
 
-        // Artist
-        this.writer.writeString(beatmap.beatmapset.artist);
-        // title
-        this.writer.writeString(beatmap.beatmapset.title);
-        // diffname
-        this.writer.writeString(beatmap.version);
+            // Artist
+            this.writer.writeString(beatMapSet.artist ?? "Unknown");
+            // Title
+            this.writer.writeString(beatMapSet.title ?? "Unknown");
+            // Version
+            this.writer.writeString(beatmap.version ?? "Unknown");
 
-        // Md5
-        this.writer.writeString(beatmap.checksum);
+            // Md5
+            this.writer.writeString(beatmap.checksum);
 
-        // User comment
-        this.writer.writeString("");
+            // User comment
+            this.writer.writeString("");
 
-        // Play mode
-        this.writer.writeByte(ModeByte[beatmap.mode]);
+            // Play mode
+            this.writer.writeByte(beatmap.mode ?? 0);
 
-        // Mod PP Star
-        this.writer.writeDouble(beatmap.difficulty_rating);
-      }
+            // Mod PP Star
+            this.writer.writeDouble(beatmap.difficulty_rating ?? 0);
+          });
+        }
+      );
 
       // Map with hash
       this.writer.writeInt32(0); // Always 0
@@ -86,7 +86,7 @@ export default class OsdbGenerator {
       // Footer
       this.writer.writeString("By Piotrekol"); // Fixed Footer
     } catch (e) {
-      Logger.generateErrorLog(new OcdlError("GENERATE_OSDB_FAILED", e));
+      throw e;
     } finally {
       this.closeWriter();
     }
