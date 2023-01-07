@@ -1,100 +1,110 @@
 import { createWriteStream, existsSync } from "fs";
 import { Response, fetch } from "undici";
 import _path from "path";
-import Logger from "./Logger";
 import OcdlError from "../struct/OcdlError";
 import Util from "../util";
+import EventEmitter from "events";
 import type Monitor from "./Monitor";
 import { config } from "../config";
-import EventEmitter from "events";
+import type { BeatMapSet } from "../struct/BeatMapSet";
+import type { Collection } from "../struct/Collection";
+
+interface DownloadManagerEvents {
+  downloaded: (beatMapSet: BeatMapSet) => void;
+  error: (beatMapSet: BeatMapSet, e: unknown) => void;
+  end: (beatMapSet: BeatMapSet[]) => void;
+  retrying: (beatMapSet: BeatMapSet) => void;
+  downloading: (beatMapSet: BeatMapSet) => void;
+}
+
+export declare interface DownloadManager {
+  on<U extends keyof DownloadManagerEvents>(
+    event: U,
+    listener: DownloadManagerEvents[U]
+  ): this;
+
+  emit<U extends keyof DownloadManagerEvents>(
+    event: U,
+    ...args: Parameters<DownloadManagerEvents[U]>
+  ): boolean;
+}
 
 export class DownloadManager extends EventEmitter {
-  monitor: Monitor;
   path: string;
   parallel: boolean;
-  impulseRate: number;
+  concurrency: number;
   osuMirrorUrl: string;
   altOsuMirrorUrl: string;
+  collection: Collection;
+  not_downloaded: BeatMapSet[] = [];
 
   constructor(monitor: Monitor) {
     super();
-    this.monitor = monitor;
     this.path = _path.join(config.directory, monitor.collection.name);
     this.parallel = config.parallel;
-    this.impulseRate = config.dl_impulse_rate;
+    this.concurrency = config.concurrency;
     this.osuMirrorUrl = config.osuMirrorApiUrl;
     this.altOsuMirrorUrl = config.altOsuMirrorUrl;
+    this.collection = monitor.collection;
   }
 
   public async bulk_download(): Promise<void> {
-    const ids = Array.from(this.monitor.collection.beatMapSets.keys());
-
     if (this.parallel) {
-      // Impulsive download if url length is more then this.impulseRate
-      ids.length > this.impulseRate
-        ? await this.impulse(ids, this.impulseRate)
-        : await Promise.all(ids.map((id) => this._dl(id)));
+      await this.impulse();
     } else {
-      // Sequential download
-      for (let i = 0; i < ids.length; i++) await this._dl(ids[i]);
+      this.collection.beatMapSets.forEach(async (beatMapSet) => {
+        await this._downloadFile(beatMapSet);
+      });
     }
+
+    this.emit("end", this.not_downloaded);
   }
 
-  private async _dl(id: number): Promise<void> {
-    let url = this.osuMirrorUrl + id;
+  private async _downloadFile(
+    beatMapSet: BeatMapSet,
+    options: { retries: number; alt?: boolean } = { retries: 3 } // Whether or not use the alternative mirror url
+  ): Promise<void> {
+    const url =
+      (options.alt ? this.altOsuMirrorUrl : this.osuMirrorUrl) + beatMapSet.id;
 
     // Request download
-    console.log("Requesting: " + url);
-    let res = await fetch(url, { method: "GET" }).catch();
-    if (!this.isValidResponse(res)) {
-      // Sometimes server failed with 503 status code, retrying is needed
-      console.error("Requesting failed: " + url);
-
-      // Use alternative mirror url
-      url = this.altOsuMirrorUrl + id;
-      console.log("Retrying: " + url);
-      res = await fetch(url, { method: "GET" }).catch();
-
-      if (!this.isValidResponse(res)) {
-        console.error("Requesting failed: " + url);
-        Logger.generateMissingLog(this.path, id.toString());
-        return;
-      }
-    }
-
     try {
+      this.emit("downloading", beatMapSet);
+
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) throw `Status code: ${res.status}`;
       // Get file name
       const fileName = this.getFilename(res);
-
       // Check if directory exists
-      if (!this.checkIfDirectoryExists()) {
-        console.error("No directory found: " + this.path);
-        console.log("Use current working directory instead.");
-        this.path = process.cwd();
-      }
+      if (!this.checkIfDirectoryExists()) this.path = process.cwd();
       // Create write stream
-      const file = createWriteStream(_path.join(this.path, fileName));
-      file.on("error", (err) => {
-        console.error(
-          "This file could not be downloaded: " +
-            fileName +
-            " Due to error: " +
-            err
-        );
+      await new Promise<void>(async (resolve, reject) => {
+        const file = createWriteStream(_path.join(this.path, fileName));
+        file.on("error", (e) => {
+          reject(e);
+        });
+
+        for await (const chunk of res.body!) {
+          //  Write to file
+          file.write(chunk);
+        }
+
+        file.end();
+        resolve();
       });
 
-      for await (const chunk of res.body!) {
-        //  Write to file
-        if (!chunk) continue;
-        file.write(chunk);
-      }
-
-      // End the write stream
-      file.end();
-
-      console.log("Downloaded: " + url);
+      this.emit("downloaded", beatMapSet);
     } catch (e) {
-      throw new OcdlError("DOWNLOAD_FAILED", e);
+      if (options.retries) {
+        this.emit("retrying", beatMapSet);
+        this._downloadFile(beatMapSet, {
+          alt: options.retries === 1,
+          retries: options.retries - 1,
+        });
+      } else {
+        this.emit("error", beatMapSet, e);
+        this.not_downloaded.push(beatMapSet);
+      }
     }
   }
 
@@ -109,10 +119,10 @@ export class DownloadManager extends EventEmitter {
 
       if (result) {
         try {
-          const replaced = Util.replaceForbiddenChars(result[1]);
-          const decoded = decodeURIComponent(replaced);
+          const decoded = decodeURIComponent(result[1]);
+          const replaced = Util.replaceForbiddenChars(decoded);
 
-          fileName = decoded;
+          fileName = replaced;
         } catch (e) {
           throw new OcdlError("FILE_NAME_EXTRACTION_FAILED", e);
         }
@@ -122,35 +132,30 @@ export class DownloadManager extends EventEmitter {
     return fileName;
   }
 
-  private async impulse(ids: number[], rate: number): Promise<any[]> {
-    const downloaded: any[] = [];
+  private async impulse(): Promise<void> {
+    const keys = Array.from(this.collection.beatMapSets.keys());
+    const loop_amount = Math.ceil(
+      this.collection.beatMapSets.size / this.concurrency
+    );
 
-    const perLen = ids.length / rate;
-
-    for (let i = 0; i < perLen; i++) {
+    for (let i = 0; i < loop_amount; i++) {
       const promises: Promise<void>[] = [];
-      /**
-       * Bursting Rate
-       */
-      const start = i * rate;
-      const end = (i + 1) * rate;
-      const inRange = ids.slice(start, end);
-      const p = inRange.map((id) => this._dl(id));
-      promises.push(...p);
 
-      /**
-       * Resolve Promises
-       */
-      downloaded.push([...(await Promise.all(promises))]);
+      // Burst
+      const start = i * this.concurrency;
+      const end = (i + 1) * this.concurrency;
+      const range = keys.slice(start, end);
+
+      for (const id of range) {
+        const beatMapSet = this.collection.beatMapSets.get(id)!; // always have a value
+        promises.push(this._downloadFile(beatMapSet));
+      }
+
+      await Promise.all(promises);
     }
-    return downloaded;
   }
 
   private checkIfDirectoryExists(): boolean {
     return existsSync(this.path);
-  }
-
-  private isValidResponse(res: Response): boolean {
-    return res.status === 200 && !!res.body;
   }
 }
