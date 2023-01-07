@@ -1,3 +1,4 @@
+import type { BeatMapSetType, BeatMapType } from "../types";
 import Util from "../util";
 import { BeatMap } from "./BeatMap";
 import OcdlError from "./OcdlError";
@@ -8,24 +9,24 @@ export class BeatMapSet {
   beatMaps: Map<number, BeatMap>;
 
   // nullable
-  title?: string
-  artist?: string
+  title?: string;
+  artist?: string;
 
   constructor(jsonData: Record<string, any>) {
-    const { id, beatmaps } = jsonData;
-    const und = Util.checkUndefined({ id, beatmaps });
+    const und = Util.checkUndefined(jsonData, ["id", "beatmaps"]);
     if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+
+    const { id, beatmaps } = jsonData as BeatMapSetType;
 
     this.id = id;
     this.beatMaps = this._resolveBeatMaps(beatmaps);
   }
 
-  private _resolveBeatMaps(array: Record<number, any>[]) {
+  private _resolveBeatMaps(beatMapJson: BeatMapType[]) {
     const resolvedData = new Map<number, BeatMap>();
-    const unresolvedData = array;
-    for (let i = 0; i < unresolvedData.length; i++) {
+    for (let i = 0; i < beatMapJson.length; i++) {
       try {
-        const map = new BeatMap(unresolvedData[i]);
+        const map = new BeatMap(beatMapJson[i]);
         resolvedData.set(map.id, map);
       } catch (e) {
         throw new OcdlError("CORRUPTED_RESPONSE", e);

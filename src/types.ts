@@ -1,17 +1,17 @@
 // * These typings are incomplete, but they are enough to get the app working.
 // * Reference: https://github.com/roogue/osu-collector-node/blob/main/src/typings/Collection.ts
-export interface BeatMap {
+export interface BeatMapType {
   checksum: string;
   id: number;
 }
-export interface BeatMapSet {
-  beatmaps: BeatMap[];
+export interface BeatMapSetType {
+  beatmaps: BeatMapType[];
   id: number;
 }
 
-export interface Collection {
-  beatmapIds: BeatMap[];
-  beatmapsets: BeatMapSet[];
+export interface CollectionType {
+  beatmapIds: BeatMapType[];
+  beatmapsets: BeatMapSetType[];
   beatmapCount: number;
   id: number;
   name: string;
@@ -20,26 +20,18 @@ export interface Collection {
   };
 }
 
-export interface BeatMapV2 {
-  checksum: string;
+export interface FullBeatMapType {
   id: number;
-  beatmapset_id: number;
-  beatmapset: BeatMapSetV2;
-  version: string;
   mode: Mode;
   difficulty_rating: number;
+  version: string;
+  beatmapset: FullBeatMapSetType;
 }
 
-export interface BeatMapSetV2 {
-  artist: string;
+export interface FullBeatMapSetType {
+  id: number;
   title: string;
-  creator: string;
-}
-
-export interface BeatMapV2ResData {
-  nextPageCursor: number;
-  hasMore: boolean;
-  beatmaps: BeatMapV2[];
+  artist: string;
 }
 
 export type Mode = "taiko" | "osu" | "fruits" | "mania";
