@@ -74,7 +74,7 @@ const isOnline = async (): Promise<boolean> => {
   try {
     await main.run();
   } catch (e) {
-    console.error(e);
-    if (e instanceof OcdlError) return Logger.generateErrorLog(e);
+    if (e instanceof OcdlError) Logger.generateErrorLog(e);
+    monitor.freeze("An error occurred: " + e, true);
   }
 })();
