@@ -1,6 +1,5 @@
 import { DownloadManager } from "./DownloadManager";
 import { request } from "undici";
-import type Config from "../struct/Config";
 import OsdbGenerator from "./OsdbGenerator";
 import OcdlError from "../struct/OcdlError";
 import { existsSync, mkdirSync } from "fs";
@@ -10,10 +9,10 @@ import type Monitor from "./Monitor";
 import { config } from "../config";
 import Logger from "./Logger";
 import chalk from "chalk";
+import { Msg } from "../struct/Message";
 
 export default class Main {
   monitor: Monitor;
-  config: Config = config;
   collectionApiUrl: string;
   collectionApiUrlV2: string;
 
@@ -22,11 +21,11 @@ export default class Main {
 
     const id = monitor.collection.id;
     // Quick hand api url for faster fetching
-    this.collectionApiUrl = this.config.osuCollectorApiUrl + id.toString();
+    this.collectionApiUrl = config.osuCollectorApiUrl + id.toString();
 
     // Api url for full information
     this.collectionApiUrlV2 =
-      this.config.osuCollectorApiUrl + id.toString() + "/beatmapsV2";
+      config.osuCollectorApiUrl + id.toString() + "/beatmapsV2";
   }
 
   async run(): Promise<void> {
@@ -40,7 +39,7 @@ export default class Main {
     this.monitor.update();
 
     // Fetch full data if user wants generate osdb file
-    if (this.config.mode === 2) {
+    if (config.mode === 2) {
       let hasMorePage: boolean = true;
       let cursor: number = 0;
 
@@ -50,16 +49,15 @@ export default class Main {
         if (v2ResponseData instanceof OcdlError) throw v2ResponseData;
 
         try {
-          const { hasMore, nextPageCursor, beatmaps } = v2ResponseData;
-
-          const und = Util.checkUndefined({
-            hasMore,
-            nextPageCursor,
-            beatmaps,
-          });
+          const und = Util.checkUndefined(v2ResponseData, [
+            "hasMore",
+            "nextPageCursor",
+            "beatmaps",
+          ]);
           if (und)
             throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
+          const { hasMore, nextPageCursor, beatmaps } = v2ResponseData;
           // Resolve all required data
           this.monitor.collection.resolveFullData(beatmaps);
 
@@ -84,7 +82,7 @@ export default class Main {
     // Create folder
     try {
       responseData.name = Util.replaceForbiddenChars(responseData.name);
-      const path = _path.join(this.config.directory, responseData.name);
+      const path = _path.join(config.directory, responseData.name);
       if (!existsSync(path)) mkdirSync(path);
     } catch (e) {
       throw new OcdlError("FOLDER_GENERATION_FAILED", e);
@@ -95,7 +93,7 @@ export default class Main {
     this.monitor.update();
 
     // Generate .osdb file
-    if (this.config.mode === 2) {
+    if (config.mode === 2) {
       try {
         const generator = new OsdbGenerator(this.monitor);
         await generator.writeOsdb();
@@ -109,43 +107,49 @@ export default class Main {
     this.monitor.update();
 
     // Download beatmapSet
+    // This is added for people who don't want to download beatmaps
+    console.log(Msg.PRE_DOWNLOAD);
+    await new Promise<void>((r) => setTimeout(r, 3e3));
+
     try {
       const downloadManager = new DownloadManager(this.monitor);
+      downloadManager.on("downloading", (beatMapSet) => {
+        this.monitor.appendLog(
+          chalk.gray`Downloading [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
+        );
+        this.monitor.update();
+      });
+
+      downloadManager.on("retrying", (beatMapSet) => {
+        this.monitor.appendLog(
+          chalk.yellow`Retrying [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
+        );
+        this.monitor.update();
+      });
+
+      downloadManager.on("downloaded", (beatMapSet) => {
+        const downloaded = this.monitor.condition.downloaded_beatmapset;
+        this.monitor.setCondition({
+          downloaded_beatmapset: downloaded + 1,
+        });
+        this.monitor.appendLog(
+          chalk.green`Downloaded [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
+        );
+        this.monitor.update();
+      });
+
+      downloadManager.on("error", (beatMapSet, e) => {
+        this.monitor.appendLog(
+          chalk.red`Failed when downloading [${beatMapSet.id}] ${
+            beatMapSet.title ?? ""
+          }, due to error: ${e}`
+        );
+        this.monitor.update();
+      });
+
       downloadManager.bulk_download();
 
       await new Promise<void>((resolve) => {
-        downloadManager.on("downloading", (beatMapSet) => {
-          this.monitor.appendLog(
-            chalk.gray`Downloading [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
-          );
-          this.monitor.update();
-        });
-
-        downloadManager.on("retrying", (beatMapSet) => {
-          this.monitor.appendLog(
-            chalk.yellow`Retrying [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
-          );
-          this.monitor.update();
-        });
-
-        downloadManager.on("downloaded", (beatMapSet) => {
-          const downloaded = this.monitor.condition.downloaded_beatmapset;
-          this.monitor.setCondition({ downloaded_beatmapset: downloaded + 1 });
-          this.monitor.appendLog(
-            chalk.green`Downloaded [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
-          );
-          this.monitor.update();
-        });
-
-        downloadManager.on("error", (beatMapSet, e) => {
-          this.monitor.appendLog(
-            chalk.red`Failed when downloading [${beatMapSet.id}] ${
-              beatMapSet.title ?? ""
-            }, due to error: ${e}`
-          );
-          this.monitor.update();
-        });
-
         downloadManager.on("end", (beatMapSet) => {
           for (let i = 0; i < beatMapSet.length; i++) {
             Logger.generateMissingLog(
@@ -160,7 +164,7 @@ export default class Main {
       throw e;
     }
 
-    this.monitor.freeze("Download finished");
+    this.monitor.freeze("\nDownload finished");
 
     return;
   }
