@@ -32,5 +32,6 @@ export enum Msg {
 
   GENERATE_OSDB = "Generating {{name}}.osdb file",
 
-  DOWNLOAD_SONG = "Downloading [ {{amount}}/{{total}} ] beatmap set...",
+  DOWNLOAD_FILE = "Downloading [ {{amount}}/{{total}} ] beatmap set...",
+  DOWNLOAD_LOG = "Logs: \n{{log}}"
 }

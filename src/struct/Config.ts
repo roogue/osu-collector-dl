@@ -6,9 +6,10 @@ export default class Config {
   osuCollectorApiUrl: string;
   osuMirrorApiUrl: string;
   altOsuMirrorUrl: string;
-  dl_impulse_rate: number;
+  concurrency: number;
   directory: string;
   mode: number;
+  logLength: number;
   static readonly configFilePath = "./config.json";
 
   constructor(object?: Record<string, any>) {
@@ -21,12 +22,15 @@ export default class Config {
     // alt Osu mirror url
     this.altOsuMirrorUrl = "https://kitsu.moe/api/d/";
 
+    // The length of log when downloading beatmapsets
+    this.logLength = 10;
+
     // Whether download process should be done in parallel
     this.parallel = Util.isBoolean(object?.parallel) ? object!.parallel : true;
 
     // How many urls should be downloaded in parallel at once
-    this.dl_impulse_rate = !isNaN(Number(object?.dl_impulse_rate))
-      ? Number(object!.dl_impulse_rate)
+    this.concurrency = !isNaN(Number(object?.concurrency))
+      ? Number(object!.concurrency)
       : 10;
 
     // Directory to save beatmaps

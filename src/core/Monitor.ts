@@ -11,6 +11,7 @@ interface Condition {
   retry_mode: boolean;
   fetched_collection: number;
   downloaded_beatmapset: number;
+  download_log: string[];
 }
 
 export default class Monitor {
@@ -32,6 +33,7 @@ export default class Monitor {
       retry_mode: false,
       fetched_collection: 0,
       downloaded_beatmapset: 0,
+      download_log: [],
     };
 
     this.version = (require("../../package.json")?.version ??
@@ -49,7 +51,7 @@ export default class Monitor {
   }
 
   update(): void {
-    if (1 != 1) clear();
+    clear();
     // Header
     log(chalk.yellow(`osu-collector-dl v${this.version}`));
     log(
@@ -88,6 +90,11 @@ export default class Monitor {
     Object.assign(this.condition, new_condition);
   }
 
+  appendLog(log: string): void {
+    this.condition.download_log.splice(0, 0, log);
+    this.condition.download_log.splice(config.logLength, 1);
+  }
+
   // Task 1
   private p_input_id(): void {
     if (this.condition.retry_input) {
@@ -109,7 +116,7 @@ export default class Monitor {
     log(
       new Message(Msg.FETCH_DATA, {
         amount: this.condition.fetched_collection.toString(),
-        length: beatmaps_length,
+        total: beatmaps_length,
       }).toString()
     );
   }
@@ -128,12 +135,18 @@ export default class Monitor {
     );
   }
 
-  // Task 5
+  // Task 6
   private p_download(): void {
     log(
-      new Message(Msg.GENERATE_OSDB, {
+      new Message(Msg.DOWNLOAD_FILE, {
         amount: this.condition.downloaded_beatmapset.toString(),
         total: this.collection.beatMapSets.size.toString(),
+      }).toString()
+    );
+
+    log(
+      new Message(Msg.DOWNLOAD_LOG, {
+        log: this.condition.download_log.join("\n"),
       }).toString()
     );
   }

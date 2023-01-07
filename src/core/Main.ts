@@ -8,6 +8,8 @@ import _path from "path";
 import Util from "../util";
 import type Monitor from "./Monitor";
 import { config } from "../config";
+import Logger from "./Logger";
+import chalk from "chalk";
 
 export default class Main {
   monitor: Monitor;
@@ -68,7 +70,7 @@ export default class Main {
           const fetched_collection =
             this.monitor.condition.fetched_collection + beatmaps.length;
           this.monitor.setCondition({ fetched_collection });
-          // this.monitor.update();
+          this.monitor.update();
         } catch (e) {
           throw new OcdlError("REQUEST_DATA_FAILED", e);
         }
@@ -109,7 +111,51 @@ export default class Main {
     // Download beatmapSet
     try {
       const downloadManager = new DownloadManager(this.monitor);
-      await downloadManager.bulk_download();
+      downloadManager.bulk_download();
+
+      await new Promise<void>((resolve) => {
+        downloadManager.on("downloading", (beatMapSet) => {
+          this.monitor.appendLog(
+            chalk.gray`Downloading [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
+          );
+          this.monitor.update();
+        });
+
+        downloadManager.on("retrying", (beatMapSet) => {
+          this.monitor.appendLog(
+            chalk.yellow`Retrying [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
+          );
+          this.monitor.update();
+        });
+
+        downloadManager.on("downloaded", (beatMapSet) => {
+          const downloaded = this.monitor.condition.downloaded_beatmapset;
+          this.monitor.setCondition({ downloaded_beatmapset: downloaded + 1 });
+          this.monitor.appendLog(
+            chalk.green`Downloaded [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
+          );
+          this.monitor.update();
+        });
+
+        downloadManager.on("error", (beatMapSet, e) => {
+          this.monitor.appendLog(
+            chalk.red`Failed when downloading [${beatMapSet.id}] ${
+              beatMapSet.title ?? ""
+            }, due to error: ${e}`
+          );
+          this.monitor.update();
+        });
+
+        downloadManager.on("end", (beatMapSet) => {
+          for (let i = 0; i < beatMapSet.length; i++) {
+            Logger.generateMissingLog(
+              this.monitor.collection.name,
+              beatMapSet[i].id.toString()
+            );
+          }
+          resolve();
+        });
+      });
     } catch (e) {
       throw e;
     }
