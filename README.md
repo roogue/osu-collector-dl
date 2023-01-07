@@ -41,7 +41,7 @@ Below is the data stored in config.json, along with explanations of each setting
 > No, you are not doing anything wrong. It is normal for API requests to sometimes fail due to factors such as rate limiting and internet connection issues. The script has a built-in retrying process that will handle these issues automatically. It is expected to see the "Retrying" message during the download process.
 
 ### I want the beatmaps to be automatically added to my collections. Is that possible?
-> Unfortunately, this feature will not be implemented as directly modifying your personal osu! folder is risky and could potentially result in corrupted files. It is recommended to use Collection Manager (CM) by Piotrekol to modify your collection for more stable functionality.
+> Unfortunately, this feature will not be implemented as directly modifying your personal osu! folder is risky and could potentially result in corrupted files. It is recommended to use [Collection Manager](https://github.com/Piotrekol/CollectionManager) (CM) by Piotrekol to modify your collection for more stable functionality.
 
 ### Why won't my program even start? The program shuts off right after I opened it.
 > There could be several reasons why your program is not starting. One potential cause is that you have incorrectly edited the config.json file, such as forgetting to include double quotes around the directory path. If you are not sure what the problem is, try reinstalling the program to see if that resolves the issue.
