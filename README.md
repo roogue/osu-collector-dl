@@ -21,7 +21,7 @@ Below is the data stored in config.json, along with explanations of each setting
 ```json
 {
   "parallel": true,
-  "concurrency": 10,
+  "concurrency": 5,
   "directory": "",
   "mode": 1
 }
