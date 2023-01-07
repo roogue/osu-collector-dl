@@ -95,7 +95,7 @@ export default class Main {
     // Generate .osdb file
     if (config.mode === 2) {
       try {
-        const generator = new OsdbGenerator(this.monitor);
+        const generator = new OsdbGenerator(this.monitor.collection);
         await generator.writeOsdb();
       } catch (e) {
         throw new OcdlError("GENERATE_OSDB_FAILED", e);
@@ -112,7 +112,7 @@ export default class Main {
     await new Promise<void>((r) => setTimeout(r, 3e3));
 
     try {
-      const downloadManager = new DownloadManager(this.monitor);
+      const downloadManager = new DownloadManager(this.monitor.collection);
       downloadManager.on("downloading", (beatMapSet) => {
         this.monitor.appendLog(
           chalk.gray`Downloading [${beatMapSet.id}] ${beatMapSet.title ?? ""}`

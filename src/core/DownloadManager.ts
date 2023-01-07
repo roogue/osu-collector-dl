@@ -4,7 +4,6 @@ import _path from "path";
 import OcdlError from "../struct/OcdlError";
 import Util from "../util";
 import EventEmitter from "events";
-import type Monitor from "./Monitor";
 import { config } from "../config";
 import type { BeatMapSet } from "../struct/BeatMapSet";
 import type { Collection } from "../struct/Collection";
@@ -38,14 +37,14 @@ export class DownloadManager extends EventEmitter {
   collection: Collection;
   not_downloaded: BeatMapSet[] = [];
 
-  constructor(monitor: Monitor) {
+  constructor(collection: Collection) {
     super();
-    this.path = _path.join(config.directory, monitor.collection.name);
+    this.path = _path.join(config.directory, collection.name);
     this.parallel = config.parallel;
     this.concurrency = config.concurrency;
     this.osuMirrorUrl = config.osuMirrorApiUrl;
     this.altOsuMirrorUrl = config.altOsuMirrorUrl;
-    this.collection = monitor.collection;
+    this.collection = collection;
   }
 
   public async bulk_download(): Promise<void> {
