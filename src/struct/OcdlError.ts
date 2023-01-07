@@ -1,4 +1,5 @@
 export enum ErrorType {
+  "INVALID_CONFIG" = "The config is invalid json type",
   "GET_USER_INPUT_FAILED" = "Error occurred while getting user input",
   "RESOLVE_JSON_FAILED" = "Error occurred while resolving res body to json",
   "DOWNLOAD_FAILED" = "Error occurred while downloading beatmapset",

@@ -1,5 +1,7 @@
 import { existsSync, writeFileSync } from "fs";
+import Logger from "../core/Logger";
 import Util from "../util";
+import OcdlError from "./OcdlError";
 
 export default class Config {
   parallel: boolean;
@@ -12,7 +14,16 @@ export default class Config {
   logLength: number;
   static readonly configFilePath = "./config.json";
 
-  constructor(object?: Record<string, any>) {
+  constructor(contents?: string) {
+    let config: Record<string, any> = {};
+    if (contents) {
+      try {
+        config = JSON.parse(contents);
+      } catch (e) {
+        throw Logger.generateErrorLog(new OcdlError("INVALID_CONFIG", e));
+      }
+    }
+
     // Osucollector's base url
     this.osuCollectorApiUrl = "https://osucollector.com/api/collections/";
 
@@ -26,23 +37,23 @@ export default class Config {
     this.logLength = 10;
 
     // Whether download process should be done in parallel
-    this.parallel = Util.isBoolean(object?.parallel) ? object!.parallel : true;
+    this.parallel = Util.isBoolean(config.parallel) ? config.parallel : true;
 
     // How many urls should be downloaded in parallel at once
-    this.concurrency = !isNaN(Number(object?.concurrency))
-      ? Number(object!.concurrency)
+    this.concurrency = !isNaN(Number(config.concurrency))
+      ? Number(config.concurrency)
       : 10;
 
     // Directory to save beatmaps
-    this.directory = object?.directory
-      ? String(object?.directory)
+    this.directory = config.directory
+      ? String(config.directory)
       : process.cwd();
 
     // Mode
     // 1: Download BeatmapSet
     // 2: Download BeatmapSet + Generate .osdb
-    if (object?.mode) {
-      const mode = Number(object.mode);
+    if (config.mode) {
+      const mode = Number(config.mode);
       // Mode should be 1 or 2
       ![1, 2].includes(mode) ? (this.mode = 1) : (this.mode = mode);
     } else {
@@ -56,7 +67,7 @@ export default class Config {
         Config.configFilePath,
         JSON.stringify({
           parallel: true,
-          dl_impulse_rate: 5,
+          concurrency: 5,
           directory: process.cwd(),
           mode: 1,
         })
