@@ -22,16 +22,15 @@ export class BeatMapSet {
     this.beatMaps = this._resolveBeatMaps(beatmaps);
   }
 
-  private _resolveBeatMaps(beatMapJson: BeatMapType[]) {
-    const resolvedData = new Map<number, BeatMap>();
-    for (let i = 0; i < beatMapJson.length; i++) {
+  private _resolveBeatMaps(beatMapJson: BeatMapType[]): Map<number, BeatMap> {
+    return beatMapJson.reduce((acc, current) => {
       try {
-        const map = new BeatMap(beatMapJson[i]);
-        resolvedData.set(map.id, map);
+        const map = new BeatMap(current);
+        acc.set(map.id, map);
+        return acc;
       } catch (e) {
         throw new OcdlError("CORRUPTED_RESPONSE", e);
       }
-    }
-    return resolvedData;
+    }, new Map<number, BeatMap>());
   }
 }

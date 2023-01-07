@@ -1,7 +1,12 @@
 import OcdlError from "./OcdlError";
 import { BeatMapSet } from "./BeatMapSet";
 import Util from "../util";
-import { BeatMapSetType, CollectionType, FullBeatMapType, ModeByte } from "../types";
+import {
+  BeatMapSetType,
+  CollectionType,
+  FullBeatMapType,
+  ModeByte,
+} from "../types";
 
 export class Collection {
   beatMapSets: Map<number, BeatMapSet> = new Map();
@@ -50,7 +55,9 @@ export class Collection {
       ]);
       if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
-      const { id, mode, difficulty_rating, version, beatmapset } = jsonData[i] as FullBeatMapType;
+      const { id, mode, difficulty_rating, version, beatmapset } = jsonData[
+        i
+      ] as FullBeatMapType;
 
       const beatMapSet = this.beatMapSets.get(beatmapset.id);
       if (!beatMapSet) continue;
@@ -72,18 +79,14 @@ export class Collection {
   private _resolveBeatMapSets(
     beatMapSetJson: BeatMapSetType[]
   ): Map<number, BeatMapSet> {
-    const resolvedData = new Map<number, BeatMapSet>();
-    if (!beatMapSetJson.length)
-      throw new OcdlError("CORRUPTED_RESPONSE", "No beatmapset found");
-
-    for (let i = 0; i < beatMapSetJson.length; i++) {
+    return beatMapSetJson.reduce((acc, current) => {
       try {
-        const set = new BeatMapSet(beatMapSetJson[i]);
-        resolvedData.set(set.id, set);
+        const map = new BeatMapSet(current);
+        acc.set(map.id, map);
+        return acc;
       } catch (e) {
         throw new OcdlError("CORRUPTED_RESPONSE", e);
       }
-    }
-    return resolvedData;
+    }, new Map<number, BeatMapSet>());
   }
 }
