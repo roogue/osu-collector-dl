@@ -1,49 +1,40 @@
 # osu-collector-dl
 
-A Script that automatizes the downloads of beatmap set in Osu!Collector.
+A script that automates the downloading of beatmap sets in Osu!Collector.
 
 ## Installation
 
-- Download from the latest release, then extract the compressed file.
+1. Download the latest release from the releases page.
+2. Extract the compressed file
 
 ## Usage
 
-Run the `osu-collector-dl.exe` from the downloaded folder.
+1. Run the `osu-collector-dl.exe` file from the downloaded folder.
+2. A prompt window will appear. You will need to enter the ID of the collection you want to download. To find the ID, look at the end of the Osu!Collector collection URL. For example, if the URL is https://osucollector.com/collections/44, you would enter 44 as the ID.
 
-After a prompt window pops up, an ID is required. You have to insert the numbers that appear at the end of the Osu!Collector collection url.
-For an example: Insert "44" if you want to download from this link: https://osucollector.com/collections/44
+## Configuration
 
-## Config
+You can customize various settings that affect the download speed, location of the downloaded beatmaps, and working mode of the script by editing the `config.json` file. To do this, right-click on the file and select "Open with" from the context menu. Choose a text editor (such as Notepad) to open the file and make the desired changes.
 
-You can customize some settings which affect in download speed, location of the downloaded osu beatmaps and working mode.
-
-Below is the data stored in `config.json`, you can modify it to your flavor. \
-(Tips: Right click and open with notepad to edit .json file.)
+Below is the data stored in config.json, along with explanations of each setting:
 
 ```json
 {
   "parallel": true,
-  "dl_impulse_rate": 10,
+  "concurrency": 10,
   "directory": "",
   "mode": 1
 }
 ```
 
-#### Explanation:
+- `parallel`: Set to `true` if you want to download multiple beatmap sets at the same time, or `false` if you want to download only one beatmap set at a time.
 
-[ parallel: true | false ] - Whether or not downloads should be done in parallel. \
--> If parallel is true, multiple downloads will process at the same time. If false, the program will download only one beatmap set at a time.
+- `concurrency`: The number of downloads to request at a time. It is recommended to set this to a low number (such as 5) to prevent abuse of the osu!mirror API and potential IP bans or rate limits.
 
-[ dl_impulse_rate: number ] - How many downloads should be requested at a time. \
--> Warning: this setting is recommended to be set as low as around 5 to prevent unwanted abuse to osu!mirror API. You could get IP banned or rate limited if you're abusing their API (I guess :v but just don't).
+- `directory`: The path to the folder where you want to save the downloaded beatmaps. If no value is provided, the current working directory will be used. Remember to include double quotes around the path!
 
-[ directory: string ] - Path to your download folder. \
--> Remember the double quotes!! If none was provided, the current working directory would be used.
-
-[ mode: 1 | 2 ] - Which mode should the program works on. \
--> When mode 1 is selected, only download of the beatmap sets will be progressed. If mode 2 is selected, the download will still be progressed but with an additional generation of .osdb file. \
-Note: You can still choose a mode on the terminal.
+- `mode`: The mode in which the program should operate. Set to `1` to only download the beatmap sets, or `2` to also generate a .osdb file during the download process. You can also specify the mode at the terminal.
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+This project is licensed under the MIT License. See the [LICENSE](https://choosealicense.com/licenses/mit/) file for details.
