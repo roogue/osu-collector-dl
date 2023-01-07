@@ -52,13 +52,9 @@ export default class Config {
     // Mode
     // 1: Download BeatmapSet
     // 2: Download BeatmapSet + Generate .osdb
-    if (config.mode) {
-      const mode = Number(config.mode);
-      // Mode should be 1 or 2
-      ![1, 2].includes(mode) ? (this.mode = 1) : (this.mode = mode);
-    } else {
-      this.mode = 1;
-    }
+    config.mode && this.isValidMode(config.mode)
+      ? (this.mode = config.mode)
+      : (this.mode = 1);
   }
 
   static generateConfig(): Config {
@@ -78,5 +74,9 @@ export default class Config {
 
   private static checkIfConfigFileExist(): boolean {
     return existsSync(Config.configFilePath);
+  }
+
+  private isValidMode(mode: any): mode is 1 | 2 {
+    return typeof mode === "number" && [1, 2].includes(mode);
   }
 }
