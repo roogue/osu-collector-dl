@@ -1,3 +1,5 @@
+import { request } from "undici";
+
 export default class Util {
   static isBoolean(obj: any): boolean {
     return !!obj === obj;
@@ -6,6 +8,44 @@ export default class Util {
   static replaceForbiddenChars(str: string): string {
     const regex = /[\\\/<>:"\|?*]+/g;
     return str.replace(regex, "");
+  }
+
+  static async isOnline(): Promise<boolean> {
+    return !!(await require("dns")
+      .promises.resolve("google.com")
+      .catch(() => {}));
+  }
+
+  static async checkNewVersion(
+    current_version: string
+  ): Promise<string | null> {
+    if (current_version === "Unknown") return null;
+    const res = await request(
+      "https://api.github.com/repos/roogue/osu-collector-dl/releases",
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": `osu-collector-dl/v${current_version}`,
+        },
+        query: {
+          per_page: 1,
+        },
+      }
+    ).catch(() => null);
+
+    if (!res || res.statusCode !== 200) return null;
+    const data = (await res.body.json().catch(() => null)) as
+      | Record<string, any>[]
+      | null;
+    if (!data) return null;
+
+    // Check version
+    const version = data[0].tag_name as string;
+    if (version === "v" + current_version) return null;
+
+    return version;
   }
 
   static checkUndefined(

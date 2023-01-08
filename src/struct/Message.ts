@@ -21,6 +21,8 @@ export class Message {
 export enum Msg {
   NO_CONNECTION = "This script only runs with presence of internet connection.",
 
+  NEW_VERSION = "New version ({{version}}) is available! Download latest version: {{url}}",
+
   INPUT_ID = "Enter the collection ID you want to download:",
   INPUT_ID_ERR = "ID should be a number, Ex: '44' (without the quote)",
   INPUT_MODE = "Generate .osdb file? (y/n) (Default: {{mode}}):",
