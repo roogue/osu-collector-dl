@@ -42,6 +42,9 @@ export default class Monitor extends Manager {
     this.version = (require("../../package.json")?.version ??
       "Unknown") as string; // Get current version from package.json
 
+    // Set terminal title according to it's version
+    Util.setTerminalTitle(`osu-collector-dl ${this.version}`);
+
     this.task = {
       0: () => {}, // Empty function
       1: this.p_input_id.bind(this), // Get Input id
@@ -55,9 +58,6 @@ export default class Monitor extends Manager {
 
   update(): Monitor {
     clear();
-    // Header of the console
-    log(chalk.yellow(`osu-collector-dl v${this.version}`));
-
     // If new version is available, display a message that notice the user
     if (this.condition.new_version) {
       log(
