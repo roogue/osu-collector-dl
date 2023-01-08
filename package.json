@@ -12,7 +12,8 @@
     "cp-build-win": "cp ./{LICENSE,README.md} ./build/win-x64/ && cp ./config.json.example ./build/win-x64/config.json",
     "cp-build-linux": "cp ./{LICENSE,README.md} ./build/linux-arm64/ && cp ./config.json.example ./build/linux-arm64/config.json",
     "cp-build": "yarn cp-build-win && yarn cp-build-linux",
-    "pack-app": "yarn build-app & yarn cp-build"
+    "clean-folder": "rm -r ./build",
+    "pack-app": "clean-folder && yarn build-app & yarn cp-build"
   },
   "license": "MIT",
   "dependencies": {
