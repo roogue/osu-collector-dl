@@ -19,8 +19,6 @@ export class Collection {
     username: "Unknown",
   };
 
-  constructor() {}
-
   resolveData(jsonData: Record<string, any> = {}) {
     const und = Util.checkUndefined(jsonData, [
       "id",
@@ -39,6 +37,10 @@ export class Collection {
     this.uploader = uploader;
     this.beatMapSets = this._resolveBeatMapSets(beatmapsets);
     this.beatMapCount = beatmapCount;
+  }
+
+  getReplacedName(): string {
+    return Util.replaceForbiddenChars(this.name);
   }
 
   resolveFullData(jsonData: Record<string, any>[]): void {

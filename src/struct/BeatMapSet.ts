@@ -22,6 +22,11 @@ export class BeatMapSet {
     this.beatMaps = this._resolveBeatMaps(beatmaps);
   }
 
+  getReplacedName(): string | null {
+    if (!this.title) return null;
+    return Util.replaceForbiddenChars(this.title);
+  }
+
   private _resolveBeatMaps(beatMapJson: BeatMapType[]): Map<number, BeatMap> {
     return beatMapJson.reduce((acc, current) => {
       try {
