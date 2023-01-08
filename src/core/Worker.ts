@@ -10,6 +10,7 @@ import Logger from "./Logger";
 import chalk from "chalk";
 import { Message, Msg } from "../struct/Message";
 import Manager from "./Manager";
+import { Constant } from "../struct/Constant";
 
 export default class Worker extends Manager {
   monitor: Monitor;
@@ -22,60 +23,69 @@ export default class Worker extends Manager {
   async run(): Promise<void> {
     // Check if internet connection is presence
     const onlineStatus = await Util.isOnline();
+    // Stop the process if user is not connected to internet
     if (!onlineStatus)
       return this.monitor.freeze(
         new Message(Msg.NO_CONNECTION).toString(),
         true
       );
 
+    // Check for new version of this program
     await this.monitor.checkNewVersion();
 
     let id: number | null = null;
     let mode: number | null = null;
 
     try {
-      // task 1
+      // Task 1
       this.monitor.next();
 
-      // Get id
+      // Get the collection id from user input
       while (id === null) {
         this.monitor.update();
 
         const result = Number(
           this.monitor.awaitInput(new Message(Msg.INPUT_ID).toString(), "none")
         );
-        if (!isNaN(result)) id = result; // check if result is valid
+        // Check if result is valid
+        if (!isNaN(result)) id = result;
+        // Set retry to true to display the hint if user incorrectly inserted unwanted value
         this.monitor.condition.retry_input = true;
       }
 
+      // Set collection id after getting input from user
       Manager.collection.id = id;
 
-      // task 2
+      // Task 2
       this.monitor.next();
 
-      // Get mode
+      // Get the working mode from user input
       while (mode === null) {
         this.monitor.update();
+
         const result = String(
           this.monitor.awaitInput(
             new Message(Msg.INPUT_MODE, {
               mode: Manager.config.mode === 2 ? "Yes" : "No",
             }).toString(),
-            Manager.config.mode.toString()
+            Manager.config.mode.toString() // Use default working mode from config if the user did not insert any value
           )
         );
+        // Validate if the user input is 1 or 2
         if (["n", "no", "1"].includes(result)) mode = 1;
         if (["y", "yes", "ass", "2"].includes(result)) mode = 2;
+        // Set retry to true to display the hint if user incorrectly inserted unwanted value
         this.monitor.condition.retry_mode = true;
       }
 
+      // Set the working mode after getting input from user
       Manager.config.mode = mode;
     } catch (e) {
       throw new OcdlError("GET_USER_INPUT_FAILED", e);
     }
 
     // Fetch brief collection info
-    const responseData = await this.fetchCollection();
+    const responseData = await this._fetchCollection();
     if (responseData instanceof OcdlError) throw responseData;
     Manager.collection.resolveData(responseData);
 
@@ -83,14 +93,16 @@ export default class Worker extends Manager {
     this.monitor.next();
     this.monitor.update();
 
-    // Fetch full data if user wants generate osdb file
+    // Fetch full data if user wants to generate osdb file
     if (Manager.config.mode === 2) {
       let hasMorePage: boolean = true;
+      // The cursor which points to the next page
       let cursor: number = 0;
 
+      // Loop through every beatmaps in the collection
       while (hasMorePage) {
         // Request v2 collection
-        const v2ResponseData = await this.fetchCollection(true, cursor);
+        const v2ResponseData = await this._fetchCollection(true, cursor);
         if (v2ResponseData instanceof OcdlError) throw v2ResponseData;
 
         try {
@@ -106,13 +118,12 @@ export default class Worker extends Manager {
           // Resolve all required data
           Manager.collection.resolveFullData(beatmaps);
 
-          // Set property
           hasMorePage = hasMore;
           cursor = nextPageCursor;
 
+          // Update the current condition of monitor to display correct data
           const fetched_collection =
             this.monitor.condition.fetched_collection + beatmaps.length;
-
           this.monitor.setCondition({ fetched_collection });
           this.monitor.update();
         } catch (e) {
@@ -125,7 +136,7 @@ export default class Worker extends Manager {
     this.monitor.next();
     this.monitor.update();
 
-    // Create folder
+    // Create folder for downloading beatmaps and generating osdb file
     try {
       responseData.name = Util.replaceForbiddenChars(responseData.name);
       const path = _path.join(Manager.config.directory, responseData.name);
@@ -152,12 +163,13 @@ export default class Worker extends Manager {
     this.monitor.next();
     this.monitor.update();
 
-    // Download beatmapSet
-    // This is added for people who don't want to download beatmaps
+    // Set a 3 seconds delay before the download start
+    // This is added for people who only want to generate osdb file
     console.log(Msg.PRE_DOWNLOAD);
     await new Promise<void>((r) => setTimeout(r, 3e3));
 
     try {
+      // Listen to current download state and log into console
       const downloadManager = new DownloadManager();
       downloadManager.on("downloading", (beatMapSet) => {
         this.monitor.appendLog(
@@ -195,8 +207,10 @@ export default class Worker extends Manager {
 
       downloadManager.bulk_download();
 
+      // Create a new promise instance to wait every download process done
       await new Promise<void>((resolve) => {
         downloadManager.on("end", (beatMapSet) => {
+          // For beatmap sets which were failed to download, generate a missing log to notice the user
           for (let i = 0; i < beatMapSet.length; i++) {
             Logger.generateMissingLog(
               Manager.collection.name,
@@ -211,17 +225,15 @@ export default class Worker extends Manager {
     }
 
     this.monitor.freeze("\nDownload finished");
-
-    return;
   }
 
-  private async fetchCollection(
+  private async _fetchCollection(
     v2: boolean = false,
     cursor: number = 0
   ): Promise<Record<string, any> | OcdlError> {
-    // Check version of collection
+    // Use different endpoint for different version of api request
     const url =
-      Manager.config.osuCollectorApiUrl +
+      Constant.OsuCollectorApiUrl +
       Manager.collection.id.toString() +
       (v2 ? "/beatmapsV2" : "");
 
@@ -229,9 +241,10 @@ export default class Worker extends Manager {
       v2
         ? {
             perPage: 100,
-            cursor,
+            cursor, // Cursor which point to the next page
           }
         : {};
+
     const data = await request(url, { method: "GET", query })
       .then(async (res) => {
         if (res.statusCode !== 200) throw `Status code: ${res.statusCode}`;

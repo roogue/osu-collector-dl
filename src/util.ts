@@ -1,4 +1,5 @@
 import { request } from "undici";
+import { Constant } from "./struct/Constant";
 
 export default class Util {
   static isBoolean(obj: any): boolean {
@@ -20,20 +21,17 @@ export default class Util {
     current_version: string
   ): Promise<string | null> {
     if (current_version === "Unknown") return null;
-    const res = await request(
-      "https://api.github.com/repos/roogue/osu-collector-dl/releases",
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": `osu-collector-dl/v${current_version}`,
-        },
-        query: {
-          per_page: 1,
-        },
-      }
-    ).catch(() => null);
+    const res = await request(Constant.GithubReleaseApiUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": `osu-collector-dl/v${current_version}`,
+      },
+      query: {
+        per_page: 1,
+      },
+    }).catch(() => null);
 
     if (!res || res.statusCode !== 200) return null;
     const data = (await res.body.json().catch(() => null)) as

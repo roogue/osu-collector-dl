@@ -6,7 +6,7 @@ const filePath = Config.configFilePath;
 
 export default class Manager {
   protected static collection = new Collection();
-  protected static config = existsSync(filePath)
-    ? new Config(readFileSync(filePath, "utf8"))
-    : Config.generateConfig();
+  protected static config = existsSync(filePath) // Check if the path to the config file exist
+    ? new Config(readFileSync(filePath, "utf8")) // If present, read the config file
+    : Config.generateConfig(); // If does not present, generate the config file
 }

@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { log, clear } from "console";
+import { Constant } from "../struct/Constant";
 import { Message, Msg } from "../struct/Message";
 import OcdlError from "../struct/OcdlError";
 import Util from "../util";
@@ -15,9 +16,13 @@ interface Condition {
 }
 
 export default class Monitor extends Manager {
+  // Current version of the application
   readonly version: string;
+  // Current progress of the application
   private progress = 0;
+  // Console prompt for user input and freezing purpose
   private prompt = require("prompt-sync")({ sigint: true });
+  // Object containing functions for each task
   private readonly task: Record<number, () => void>;
 
   readonly condition: Condition;
@@ -39,8 +44,8 @@ export default class Monitor extends Manager {
 
     this.task = {
       0: () => {}, // Empty function
-      1: this.p_input_id.bind(this), // Input id
-      2: this.p_input_mode.bind(this), // Input mode
+      1: this.p_input_id.bind(this), // Get Input id
+      2: this.p_input_mode.bind(this), // Get Input mode
       3: this.p_fetch_collection.bind(this), // Fetch collection
       4: this.p_create_folder.bind(this), // Fetch collection v2
       5: this.p_generate_osdb.bind(this), // Generate osdb
@@ -50,25 +55,28 @@ export default class Monitor extends Manager {
 
   update(): Monitor {
     clear();
-    // Header
+    // Header of the console
     log(chalk.yellow(`osu-collector-dl v${this.version}`));
 
+    // If new version is available, display a message that notice the user
     if (this.condition.new_version) {
       log(
         chalk.yellow(
           new Message(Msg.NEW_VERSION, {
             version: this.condition.new_version,
-            url: `https://github.com/roogue/osu-collector-dl/releases/tag/${this.condition.new_version}`,
+            url: Constant.GithubReleaseUrl + this.condition.new_version,
           }).toString()
         )
       );
     }
 
+    // Display the collection id and name, as well as the current working mode
     log(
       chalk.green(
         `Collection: ${Manager.collection.id} - ${Manager.collection.name} | Mode: ${Manager.config.mode}`
       )
     );
+
     // Display progress according to current task
     try {
       this.task[this.progress]();
@@ -80,20 +88,22 @@ export default class Monitor extends Manager {
   }
 
   freeze(message: string, isErrored: boolean = false): void {
-    // Red color if errored, green if not
+    // If errored, the message is in red, otherwise green
     log(isErrored ? chalk.red(message) : chalk.greenBright(message));
 
     // Freeze the console with prompt
     this.prompt(`Press "Enter" to ${isErrored ? "exit" : "continue"}.`);
 
+    // End the whole process if it is errored
     if (isErrored) process.exit(1);
   }
 
+  // Stop the console and wait for user input
   awaitInput(message: string, value?: any): string {
-    return this.prompt(message + " ", value); // Add space
+    return this.prompt(message + " ", value);
   }
 
-  // Keep progress on track
+  // To update the progress correspond to the current task
   next(): void {
     this.progress++;
   }

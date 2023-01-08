@@ -1,3 +1,4 @@
+// Types of error in enumerator
 export enum ErrorType {
   "INVALID_CONFIG" = "The config is invalid json type",
   "GET_USER_INPUT_FAILED" = "Error occurred while getting user input",
@@ -11,12 +12,14 @@ export enum ErrorType {
   "CORRUPTED_RESPONSE" = "The api response is corrupted",
 }
 
+// Returns a string containing the current date, a label, the string value associated with the errorType, and the error itself
 const getMessage = (type: keyof typeof ErrorType, error: any): string => {
   return `${new Date()} | [OcdlError]: ${type} - ${ErrorType[type]}\n${error}`;
 };
 
 export default class OcdlError extends Error {
   constructor(errorType: keyof typeof ErrorType, error: any) {
+    // Calls the parent class' constructor and sets the message property of the OcdlError instance
     super(getMessage(errorType, error));
   }
 }

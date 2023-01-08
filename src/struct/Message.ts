@@ -1,23 +1,30 @@
 export class Message {
+  // Message object that will be constructed with a Msg enum value
+  // and an optional object with variables to be replaced in the message string
   private message: Msg;
   private variable: Record<string, string>;
 
+  // Constructor to create a new Message object
   constructor(message: Msg, variable?: Record<string, string>) {
+    // Assign the provided message and variable to the class properties
     this.message = message;
-    this.variable = variable ?? {};
+    this.variable = variable ?? {}; // default to an empty object if no variable provided
   }
 
-  toString() {
+  // Method to convert the message to a string with variables replaced
+  toString(): string {
     // Replace value if variable is provided
-    let msg: string = this.message;
+    let msg: string = this.message; // get the message from the class property
     for (const [key, value] of Object.entries(this.variable)) {
-      const regex = new RegExp(`{{${key}}}`, "g");
-      msg = msg.replace(regex, value);
+      // iterate over the variables and replace the placeholders in the message string
+      const regex = new RegExp(`{{${key}}}`, "g"); // create a regex to match the placeholder
+      msg = msg.replace(regex, value); // replace the placeholder with the value
     }
-    return msg;
+    return msg; // return the modified message string
   }
 }
 
+// Enum with string values representing different messages
 export enum Msg {
   NO_CONNECTION = "This script only runs with presence of internet connection.",
 

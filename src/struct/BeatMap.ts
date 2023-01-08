@@ -3,16 +3,17 @@ import Util from "../util";
 import OcdlError from "./OcdlError";
 
 export class BeatMap {
-  // compulsory
+  // Compulsory property
   id: number;
   checksum: string;
 
-  // nullable
+  // Nullable property
   version?: string;
   mode?: number;
   difficulty_rating?: number;
 
   constructor(jsonData: Record<string, any>) {
+    // Check if required fields are present in the JSON response
     const und = Util.checkUndefined(jsonData, ["id", "checksum"]);
     if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
