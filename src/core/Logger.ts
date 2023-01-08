@@ -38,7 +38,7 @@ export default class Logger {
       if (!existsSync(path)) {
         writeFileSync(
           path,
-          `=== Missing Log ===\n[ Try to download manually ]\n${url}\n`
+          `=== Missing Beatmap Sets ===\n[ Try to download manually ]\n${url}\n`
         );
       } else {
         appendFileSync(path, `${url}\n`);
