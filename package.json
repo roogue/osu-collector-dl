@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "main": "./dist/index.js",
   "scripts": {
-    "build": "yarn run build-app && yarn run cp-build",
+    "build": "yarn run clean-folder && yarn run build-app && yarn run cp-build",
     "start": "yarn build-ts && node .",
     "build-ts": "tsc -p .",
     "build-app-win": "yarn build-ts && pkg -t node16-win-x64 -o ./build/win-x64/osu-collector-dl.exe ./dist/index.js --public",
@@ -12,8 +12,7 @@
     "cp-build-win": "cp ./{LICENSE,README.md} ./build/win-x64/ && cp ./config.json.example ./build/win-x64/config.json",
     "cp-build-linux": "cp ./{LICENSE,README.md} ./build/linux-arm64/ && cp ./config.json.example ./build/linux-arm64/config.json",
     "cp-build": "yarn cp-build-win && yarn cp-build-linux",
-    "clean-folder": "rm -r ./build",
-    "pack-app": "clean-folder && yarn build-app & yarn cp-build"
+    "clean-folder": "rm -r ./build"
   },
   "license": "MIT",
   "dependencies": {
