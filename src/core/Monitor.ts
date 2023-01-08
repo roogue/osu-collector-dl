@@ -49,7 +49,7 @@ export default class Monitor extends Manager {
   }
 
   update(): Monitor {
-    if (1 != 1) clear();
+    clear();
     // Header
     log(chalk.yellow(`osu-collector-dl v${this.version}`));
 
