@@ -32,6 +32,8 @@ Below is the data stored in config.json, along with explanations of each setting
 
 - `concurrency`: The number of downloads to request at a time. It is recommended to set this to a low number (such as 5) to prevent abuse of the osu!mirror API and potential IP bans or rate limits.
 
+- `logSize`: The number that determines the maximum number of log messages during the download process.
+
 - `directory`: The path to the folder where you want to save the downloaded beatmaps. If no value is provided, the current working directory will be used. Remember to include double quotes around the path!
 
 - `mode`: The mode in which the program should operate. Set to `1` to only download the beatmap sets, or `2` to also generate a .osdb file during the download process. You can also specify the mode at the terminal.
