@@ -114,7 +114,7 @@ export default class Monitor extends Manager {
 
   appendLog(log: string): void {
     this.condition.download_log.splice(0, 0, log);
-    this.condition.download_log.splice(Manager.config.logLength, 1);
+    this.condition.download_log.splice(Manager.config.logSize, 1);
   }
 
   async checkNewVersion() {

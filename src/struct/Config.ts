@@ -16,7 +16,7 @@ export default class Config {
   // 2: Download BeatmapSet + Generate .osdb
   mode: number;
   // The length of the log when downloading beatmapsets
-  logLength: number;
+  logSize: number;
   // The path to the config file
   static readonly configFilePath = "./config.json";
 
@@ -35,7 +35,7 @@ export default class Config {
     }
 
     // Set default values for properties if not provided in 'config' object
-    this.logLength = !isNaN(Number(config.logSize))
+    this.logSize = !isNaN(Number(config.logSize))
       ? Number(config.logSize)
       : 15;
     this.parallel = Util.isBoolean(config.parallel) ? config.parallel : true;
