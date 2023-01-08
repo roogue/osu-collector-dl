@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import { log, clear } from "console";
-import { config } from "../config";
-import type { Collection } from "../struct/Collection";
 import { Message, Msg } from "../struct/Message";
 import OcdlError from "../struct/OcdlError";
+import Util from "../util";
+import Manager from "./Manager";
 
 interface Condition {
-  mode: string;
+  new_version: string;
   retry_input: boolean;
   retry_mode: boolean;
   fetched_collection: number;
@@ -14,21 +14,19 @@ interface Condition {
   download_log: string[];
 }
 
-export default class Monitor {
-  private readonly version: string;
+export default class Monitor extends Manager {
+  readonly version: string;
   private progress = 0;
   private prompt = require("prompt-sync")({ sigint: true });
   private readonly task: Record<number, () => void>;
 
-  readonly collection: Collection;
-
   readonly condition: Condition;
 
-  constructor(collection: Collection) {
-    this.collection = collection;
+  constructor() {
+    super();
 
     this.condition = {
-      mode: config.mode.toString(),
+      new_version: "",
       retry_input: false,
       retry_mode: false,
       fetched_collection: 0,
@@ -50,13 +48,25 @@ export default class Monitor {
     };
   }
 
-  update(): void {
-    clear();
+  update(): Monitor {
+    if (1 != 1) clear();
     // Header
     log(chalk.yellow(`osu-collector-dl v${this.version}`));
+
+    if (this.condition.new_version) {
+      log(
+        chalk.yellow(
+          new Message(Msg.NEW_VERSION, {
+            version: this.condition.new_version,
+            url: `https://github.com/roogue/osu-collector-dl/releases/tag/${this.condition.new_version}`,
+          }).toString()
+        )
+      );
+    }
+
     log(
       chalk.green(
-        `Collection: ${this.collection.id} - ${this.collection.name} | Mode: ${this.condition.mode}`
+        `Collection: ${Manager.collection.id} - ${Manager.collection.name} | Mode: ${Manager.config.mode}`
       )
     );
     // Display progress according to current task
@@ -65,6 +75,8 @@ export default class Monitor {
     } catch (e) {
       throw new OcdlError("MESSAGE_GENERATOR_FAILED", e);
     }
+
+    return this;
   }
 
   freeze(message: string, isErrored: boolean = false): void {
@@ -92,7 +104,14 @@ export default class Monitor {
 
   appendLog(log: string): void {
     this.condition.download_log.splice(0, 0, log);
-    this.condition.download_log.splice(config.logLength, 1);
+    this.condition.download_log.splice(Manager.config.logLength, 1);
+  }
+
+  async checkNewVersion() {
+    // Check for new version
+    const newVersion = await Util.checkNewVersion(this.version);
+    if (!newVersion) return;
+    this.condition.new_version = newVersion;
   }
 
   // Task 1
@@ -111,7 +130,7 @@ export default class Monitor {
 
   // Task 3
   private p_fetch_collection(): void {
-    const beatmaps_length = this.collection.beatMapCount.toString();
+    const beatmaps_length = Manager.collection.beatMapCount.toString();
 
     log(
       new Message(Msg.FETCH_DATA, {
@@ -124,14 +143,18 @@ export default class Monitor {
   // Task 4
   private p_create_folder(): void {
     log(
-      new Message(Msg.CREATE_FOLDER, { name: this.collection.name }).toString()
+      new Message(Msg.CREATE_FOLDER, {
+        name: Manager.collection.name,
+      }).toString()
     );
   }
 
   // Task 5
   private p_generate_osdb(): void {
     log(
-      new Message(Msg.GENERATE_OSDB, { name: this.collection.name }).toString()
+      new Message(Msg.GENERATE_OSDB, {
+        name: Manager.collection.name,
+      }).toString()
     );
   }
 
@@ -140,7 +163,7 @@ export default class Monitor {
     log(
       new Message(Msg.DOWNLOAD_FILE, {
         amount: this.condition.downloaded_beatmapset.toString(),
-        total: this.collection.beatMapSets.size.toString(),
+        total: Manager.collection.beatMapSets.size.toString(),
       }).toString()
     );
 

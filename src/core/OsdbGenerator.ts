@@ -1,24 +1,20 @@
 import { BinaryWriter, File, IFile } from "csbinary";
 import { openSync, writeFileSync } from "fs";
-import { config } from "../config";
 import _path from "path";
-import type { Collection } from "../struct/Collection";
-import Util from "../util";
+import Manager from "./Manager";
 
-export default class OsdbGenerator {
+export default class OsdbGenerator extends Manager {
   filePath: string;
   fileName: string;
   file: IFile;
   writer: BinaryWriter;
-  collection: Collection;
 
-  constructor(collection: Collection) {
-    const collectionName = Util.replaceForbiddenChars(collection.name);
-
-    this.fileName = collectionName + ".osdb";
+  constructor() {
+    super();
+    this.fileName = Manager.collection.getReplacedName() + ".osdb";
     this.filePath = _path.join(
-      config.directory,
-      collectionName, // Folder name
+      Manager.config.directory,
+      Manager.collection.getReplacedName(), // Folder name
       this.fileName
     );
     // Create file
@@ -27,8 +23,6 @@ export default class OsdbGenerator {
     this.file = File(openSync(this.filePath, "w")); // "w" for write
 
     this.writer = new BinaryWriter(this.file);
-
-    this.collection = collection;
   }
 
   // * Refer https://github.com/Piotrekol/CollectionManager/blob/master/CollectionManagerDll/Modules/FileIO/FileCollections/OsdbCollectionHandler.cs#L89
@@ -41,18 +35,18 @@ export default class OsdbGenerator {
       this.writer.writeDouble(this.toOADate(new Date()));
 
       // Editor
-      this.writer.writeString(this.collection.uploader.username);
+      this.writer.writeString(Manager.collection.uploader.username);
 
       // Num of collections
       this.writer.writeInt32(1); // Always 1
 
       // Name
-      this.writer.writeString(this.collection.name);
+      this.writer.writeString(Manager.collection.name);
 
       // Beatmap count
-      this.writer.writeInt32(this.collection.beatMapCount);
+      this.writer.writeInt32(Manager.collection.beatMapCount);
 
-      this.collection.beatMapSets.forEach((beatMapSet, beatMapSetId) => {
+      Manager.collection.beatMapSets.forEach((beatMapSet, beatMapSetId) => {
         beatMapSet.beatMaps.forEach((beatmap, beatMapId) => {
           // BeatmapId
           this.writer.writeInt32(beatMapId);

@@ -4,9 +4,8 @@ import _path from "path";
 import OcdlError from "../struct/OcdlError";
 import Util from "../util";
 import EventEmitter from "events";
-import { config } from "../config";
 import type { BeatMapSet } from "../struct/BeatMapSet";
-import type { Collection } from "../struct/Collection";
+import Manager from "./Manager";
 
 interface DownloadManagerEvents {
   downloaded: (beatMapSet: BeatMapSet) => void;
@@ -16,7 +15,7 @@ interface DownloadManagerEvents {
   downloading: (beatMapSet: BeatMapSet) => void;
 }
 
-export declare interface DownloadManager {
+export declare interface DownloadManager extends Manager {
   on<U extends keyof DownloadManagerEvents>(
     event: U,
     listener: DownloadManagerEvents[U]
@@ -28,30 +27,32 @@ export declare interface DownloadManager {
   ): boolean;
 }
 
-export class DownloadManager extends EventEmitter {
+export class DownloadManager extends EventEmitter implements DownloadManager {
   path: string;
   parallel: boolean;
   concurrency: number;
   osuMirrorUrl: string;
   altOsuMirrorUrl: string;
-  collection: Collection;
   not_downloaded: BeatMapSet[] = [];
 
-  constructor(collection: Collection) {
+  constructor() {
     super();
-    this.path = _path.join(config.directory, collection.name);
-    this.parallel = config.parallel;
-    this.concurrency = config.concurrency;
-    this.osuMirrorUrl = config.osuMirrorApiUrl;
-    this.altOsuMirrorUrl = config.altOsuMirrorUrl;
-    this.collection = collection;
+
+    this.path = _path.join(
+      Manager.config.directory,
+      Manager.collection.getReplacedName()
+    );
+    this.parallel = Manager.config.parallel;
+    this.concurrency = Manager.config.concurrency;
+    this.osuMirrorUrl = Manager.config.osuMirrorApiUrl;
+    this.altOsuMirrorUrl = Manager.config.altOsuMirrorUrl;
   }
 
   public async bulk_download(): Promise<void> {
     if (this.parallel) {
       await this.impulse();
     } else {
-      this.collection.beatMapSets.forEach(async (beatMapSet) => {
+      Manager.collection.beatMapSets.forEach(async (beatMapSet) => {
         await this._downloadFile(beatMapSet);
       });
     }
@@ -132,9 +133,9 @@ export class DownloadManager extends EventEmitter {
   }
 
   private async impulse(): Promise<void> {
-    const keys = Array.from(this.collection.beatMapSets.keys());
+    const keys = Array.from(Manager.collection.beatMapSets.keys());
     const loop_amount = Math.ceil(
-      this.collection.beatMapSets.size / this.concurrency
+      Manager.collection.beatMapSets.size / this.concurrency
     );
 
     for (let i = 0; i < loop_amount; i++) {
@@ -146,7 +147,7 @@ export class DownloadManager extends EventEmitter {
       const range = keys.slice(start, end);
 
       for (const id of range) {
-        const beatMapSet = this.collection.beatMapSets.get(id)!; // always have a value
+        const beatMapSet = Manager.collection.beatMapSets.get(id)!; // always have a value
         promises.push(this._downloadFile(beatMapSet));
       }
 
