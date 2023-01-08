@@ -1,4 +1,5 @@
 import { existsSync, writeFileSync } from "fs";
+import path from "path";
 import Logger from "../core/Logger";
 import Util from "../util";
 import OcdlError from "./OcdlError";
@@ -34,7 +35,9 @@ export default class Config {
     this.altOsuMirrorUrl = "https://kitsu.moe/api/d/";
 
     // The length of log when downloading beatmapsets
-    this.logLength = 10;
+    this.logLength = !isNaN(Number(config.logSize))
+      ? Number(config.logSize)
+      : 15;
 
     // Whether download process should be done in parallel
     this.parallel = Util.isBoolean(config.parallel) ? config.parallel : true;
@@ -45,16 +48,12 @@ export default class Config {
       : 10;
 
     // Directory to save beatmaps
-    this.directory = config.directory
-      ? String(config.directory)
-      : process.cwd();
+    this.directory = this.getPath(config.directory);
 
     // Mode
     // 1: Download BeatmapSet
     // 2: Download BeatmapSet + Generate .osdb
-    config.mode && this.isValidMode(config.mode)
-      ? (this.mode = config.mode)
-      : (this.mode = 1);
+    this.mode = this.getMode(config.mode);
   }
 
   static generateConfig(): Config {
@@ -76,7 +75,12 @@ export default class Config {
     return existsSync(Config.configFilePath);
   }
 
-  private isValidMode(mode: any): mode is 1 | 2 {
-    return typeof mode === "number" && [1, 2].includes(mode);
+  private getMode(data: any): number {
+    return data == 1 ? 1 : data == 2 ? 2 : 1;
+  }
+
+  private getPath(data: any): string {
+    if (typeof data !== "string") return process.cwd();
+    return path.isAbsolute(data) ? data : process.cwd();
   }
 }
