@@ -22,6 +22,7 @@ Below is the data stored in config.json, along with explanations of each setting
 {
   "parallel": true,
   "concurrency": 5,
+  "logSize": 15,
   "directory": "",
   "mode": 1
 }

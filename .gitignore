@@ -1,5 +1,6 @@
 #beatmap
 *.osz
+*.osdb
 
 # Logs
 logs

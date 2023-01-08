@@ -1,6 +1,7 @@
 {
   "parallel": true,
   "concurrency": 5,
+  "logSize": 15,
   "directory": "",
   "mode": 1
 }
