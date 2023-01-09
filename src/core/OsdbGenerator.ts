@@ -1,104 +1,106 @@
 import { BinaryWriter, File, IFile } from "csbinary";
 import { openSync, writeFileSync } from "fs";
-import type Config from "../struct/Config";
-import OcdlError from "../struct/OcdlError";
-import { BeatMapV2, Collection, ModeByte } from "../types";
-import Logger from "./Logger";
 import _path from "path";
+import Manager from "./Manager";
 
-export default class OsdbGenerator {
+export default class OsdbGenerator extends Manager {
   filePath: string;
   fileName: string;
   file: IFile;
   writer: BinaryWriter;
-  collection: Collection;
-  beatMaps: BeatMapV2[];
 
-  constructor(config: Config, collection: Collection, beatMaps: BeatMapV2[]) {
-    this.fileName = collection.name + ".osdb";
+  constructor() {
+    super();
+    this.fileName = Manager.collection.getReplacedName() + ".osdb";
     this.filePath = _path.join(
-      config.directory,
-      collection.name, // Folder name
-      this.fileName
+      Manager.config.directory,
+      Manager.collection.getReplacedName(), // Folder name
+      this.fileName // File name
     );
-    // Create file
+    // Create the file
     writeFileSync(this.filePath, "");
 
+    // Access the file in writing mode
     this.file = File(openSync(this.filePath, "w")); // "w" for write
 
+    // Create a BinaryWriter instance for binary writing
     this.writer = new BinaryWriter(this.file);
-
-    this.collection = collection;
-    this.beatMaps = beatMaps;
   }
 
   // * Refer https://github.com/Piotrekol/CollectionManager/blob/master/CollectionManagerDll/Modules/FileIO/FileCollections/OsdbCollectionHandler.cs#L89
   async writeOsdb(): Promise<void> {
     try {
-      // Version 6 does not need to compress
+      // The version of the osdb file
+      // Using version o!dm6 so the file does not need to be compressed
       this.writer.writeString("o!dm6");
 
-      // Date
-      this.writer.writeDouble(this.toOADate(new Date()));
+      // OADate
+      this.writer.writeDouble(this._toOADate(new Date()));
 
-      // Editor
-      this.writer.writeString(this.collection.uploader.username);
+      // Editor of the collection
+      this.writer.writeString(Manager.collection.uploader.username);
 
-      // Num of collections
+      // Number of collections
       this.writer.writeInt32(1); // Always 1
 
-      // Name
-      this.writer.writeString(this.collection.name);
+      // Collection name
+      this.writer.writeString(Manager.collection.name);
 
       // Beatmap count
-      this.writer.writeInt32(this.beatMaps.length);
+      this.writer.writeInt32(Manager.collection.beatMapCount);
 
-      for (const beatmap of this.beatMaps) {
-        // beatmapId
-        this.writer.writeInt32(beatmap.id);
+      // Write the info for each beatmap in the collection
+      Manager.collection.beatMapSets.forEach((beatMapSet, beatMapSetId) => {
+        beatMapSet.beatMaps.forEach((beatmap, beatMapId) => {
+          // Beatmap id
+          this.writer.writeInt32(beatMapId);
 
-        // beatmapSetId
-        this.writer.writeInt32(beatmap.beatmapset_id);
+          // Beatmap set id
+          this.writer.writeInt32(beatMapSetId);
 
-        // Artist
-        this.writer.writeString(beatmap.beatmapset.artist);
-        // title
-        this.writer.writeString(beatmap.beatmapset.title);
-        // diffname
-        this.writer.writeString(beatmap.version);
+          // Artist of the beatmap set
+          this.writer.writeString(beatMapSet.artist ?? "Unknown");
+          // Title of the beatmap set
+          this.writer.writeString(beatMapSet.title ?? "Unknown");
+          // Version of the beatmap
+          this.writer.writeString(beatmap.version ?? "Unknown");
 
-        // Md5
-        this.writer.writeString(beatmap.checksum);
+          // Md5 of the beatmap
+          this.writer.writeString(beatmap.checksum);
 
-        // User comment
-        this.writer.writeString("");
+          // User comment, leave it as empty string
+          this.writer.writeString("");
 
-        // Play mode
-        this.writer.writeByte(ModeByte[beatmap.mode]);
+          // The mode of the beatmap
+          this.writer.writeByte(beatmap.mode ?? 0);
 
-        // Mod PP Star
-        this.writer.writeDouble(beatmap.difficulty_rating);
-      }
+          // The difficulty rating of the beatmap
+          this.writer.writeDouble(beatmap.difficulty_rating ?? 0);
+        });
+      });
 
       // Map with hash
       this.writer.writeInt32(0); // Always 0
 
       // Footer
-      this.writer.writeString("By Piotrekol"); // Fixed Footer
+      this.writer.writeString("By Piotrekol"); // Fixed Footer, which is used to determine if the file was corrupted or not
     } catch (e) {
-      Logger.generateErrorLog(new OcdlError("GENERATE_OSDB_FAILED", e));
+      throw e;
     } finally {
-      this.closeWriter();
+      // Close the writer properly after the writing process was errored or done
+      this._closeWriter();
     }
   }
 
-  private toOADate(date: Date): number {
+  // Calculation of current date to OADate
+  private _toOADate(date: Date): number {
+    // Idk much, the function is copy and pasted from StackOverFlow :)
     const timezoneOffset = date.getTimezoneOffset() / (60 * 24);
     const msDateObj = date.getTime() / 86400000 + (25569 - timezoneOffset);
     return msDateObj;
   }
 
-  private closeWriter(): void {
+  private _closeWriter(): void {
     this.writer.close();
   }
 }

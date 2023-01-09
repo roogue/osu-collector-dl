@@ -1,59 +1,61 @@
 import { existsSync, writeFileSync } from "fs";
+import path from "path";
+import Logger from "../core/Logger";
 import Util from "../util";
+import OcdlError from "./OcdlError";
 
 export default class Config {
+  // Whether the download process should be done in parallel
   parallel: boolean;
-  osuCollectorApiUrl: string;
-  osuMirrorApiUrl: string;
-  altOsuMirrorUrl: string;
-  dl_impulse_rate: number;
+  // The number of URLs that should be downloaded in parallel at once
+  concurrency: number;
+  // The directory to save beatmaps
   directory: string;
+  // The mode of operation
+  // 1: Download BeatmapSet
+  // 2: Download BeatmapSet + Generate .osdb
   mode: number;
+  // The length of the log when downloading beatmapsets
+  logSize: number;
+  // The path to the config file
   static readonly configFilePath = "./config.json";
 
-  constructor(object?: Record<string, any>) {
-    // Osucollector's base url
-    this.osuCollectorApiUrl = "https://osucollector.com/api/collections/";
-
-    // Osumirror's api url for download beatmap
-    this.osuMirrorApiUrl = "https://api.chimu.moe/v1/download/";
-
-    // alt Osu mirror url
-    this.altOsuMirrorUrl = "https://kitsu.moe/api/d/";
-
-    // Whether download process should be done in parallel
-    this.parallel = Util.isBoolean(object?.parallel) ? object!.parallel : true;
-
-    // How many urls should be downloaded in parallel at once
-    this.dl_impulse_rate = !isNaN(Number(object?.dl_impulse_rate))
-      ? Number(object!.dl_impulse_rate)
-      : 10;
-
-    // Directory to save beatmaps
-    this.directory = object?.directory
-      ? String(object?.directory)
-      : process.cwd();
-
-    // Mode
-    // 1: Download BeatmapSet
-    // 2: Download BeatmapSet + Generate .osdb
-    if (object?.mode) {
-      const mode = Number(object.mode);
-      // Mode should be 1 or 2
-      ![1, 2].includes(mode) ? (this.mode = 1) : (this.mode = mode);
-    } else {
-      this.mode = 1;
+  // Constructs a new Config object from a string of JSON data
+  // If no data is provided, default values are used
+  constructor(contents?: string) {
+    let config: Record<string, any> = {};
+    if (contents) {
+      try {
+        // Parse the JSON data and store it in the 'config' object
+        config = JSON.parse(contents);
+      } catch (e) {
+        // If there is an error parsing the JSON data, throw an OcdlError
+        throw Logger.generateErrorLog(new OcdlError("INVALID_CONFIG", e));
+      }
     }
+
+    // Set default values for properties if not provided in 'config' object
+    this.logSize = !isNaN(Number(config.logSize))
+      ? Number(config.logSize)
+      : 15;
+    this.parallel = Util.isBoolean(config.parallel) ? config.parallel : true;
+    this.concurrency = !isNaN(Number(config.concurrency))
+      ? Number(config.concurrency)
+      : 10;
+    this.directory = this._getPath(config.directory);
+    this.mode = this._getMode(config.mode);
   }
 
+  // Generates a default config file if one does not already exist
   static generateConfig(): Config {
-    if (!Config.checkIfConfigFileExist()) {
+    if (!Config._checkIfConfigFileExist()) {
       writeFileSync(
         Config.configFilePath,
         JSON.stringify({
           parallel: true,
-          dl_impulse_rate: 5,
-          directory: process.cwd(),
+          concurrency: 5,
+          logSize: 15,
+          directory: "",
           mode: 1,
         })
       );
@@ -61,7 +63,21 @@ export default class Config {
     return new Config();
   }
 
-  private static checkIfConfigFileExist(): boolean {
+  // Check if the config file exists
+  private static _checkIfConfigFileExist(): boolean {
     return existsSync(Config.configFilePath);
+  }
+
+  // Returns the mode of operation based on the provided data
+  // If the provided data is invalid, returns 1 (Download BeatmapSet)
+  private _getMode(data: any): number {
+    return data == 1 ? 1 : data == 2 ? 2 : 1;
+  }
+
+  // Returns the directory path based on the provided data
+  // If the provided data is invalid, returns the current working directory
+  private _getPath(data: any): string {
+    if (typeof data !== "string") return process.cwd();
+    return path.isAbsolute(data) ? data : process.cwd();
   }
 }

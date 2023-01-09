@@ -30,6 +30,6 @@
     "forceConsistentCasingInFileNames": true,
     "downlevelIteration": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
+    "resolveJsonModule": true
   }
 }

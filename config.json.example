@@ -1,6 +1,7 @@
 {
   "parallel": true,
-  "dl_impulse_rate": 5,
+  "concurrency": 5,
+  "logSize": 15,
   "directory": "",
   "mode": 1
 }
