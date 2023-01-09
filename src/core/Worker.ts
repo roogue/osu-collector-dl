@@ -31,7 +31,7 @@ export default class Worker extends Manager {
       );
 
     // Check for new version of this program
-    await this.monitor.checkNewVersion();
+    this.monitor.checkNewVersion();
 
     let id: number | null = null;
     let mode: number | null = null;
