@@ -56,9 +56,9 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       await this._impulse();
     } else {
       // Otherwise, download beatmaps sequentially
-      Manager.collection.beatMapSets.forEach(async (beatMapSet) => {
+      for (const [_, beatMapSet] of Manager.collection.beatMapSets) {
         await this._downloadFile(beatMapSet);
-      });
+      }
     }
 
     this.emit("end", this.not_downloaded);
