@@ -43,7 +43,7 @@ export default class Monitor extends Manager {
       "Unknown") as string; // Get current version from package.json
 
     // Set terminal title according to it's version
-    Util.setTerminalTitle(`osu-collector-dl ${this.version}`);
+    Util.setTerminalTitle(`osu-collector-dl v${this.version}`);
 
     this.task = {
       0: () => {}, // Empty function
