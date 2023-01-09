@@ -27,19 +27,17 @@ export class Collection {
       "name",
       "uploader",
       "beatmapsets",
-      "beatmapCount",
     ]);
     // Throw an OcdlError if a required field is not present in the jsonData object
     if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
-    const { id, name, uploader, beatmapsets, beatmapCount } =
-      jsonData as CollectionType;
+    const { id, name, uploader, beatmapsets } = jsonData as CollectionType;
 
     this.id = id;
     this.name = name;
     this.uploader = uploader;
     this.beatMapSets = this._resolveBeatMapSets(beatmapsets);
-    this.beatMapCount = beatmapCount;
+    this.beatMapCount = this._getBeatMapCount(beatmapsets);
   }
 
   // Returns a sanitized version of the Collection's name with any forbidden characters replaced
@@ -105,5 +103,14 @@ export class Collection {
         throw new OcdlError("CORRUPTED_RESPONSE", e);
       }
     }, new Map<number, BeatMapSet>());
+  }
+
+  // Reduce the beatMapSetJson array to the number of beatmaps.
+  // This alternative method is used because the response from osu!Collector API is not always accurate
+  private _getBeatMapCount(beatMapSetJson: BeatMapSetType[]): number {
+    return beatMapSetJson.reduce((acc, current) => {
+      const length = current.beatmaps.length;
+      return acc + length;
+    }, 0);
   }
 }

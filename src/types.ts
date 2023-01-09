@@ -12,7 +12,6 @@ export interface BeatMapSetType {
 export interface CollectionType {
   beatmapIds: BeatMapType[];
   beatmapsets: BeatMapSetType[];
-  beatmapCount: number;
   id: number;
   name: string;
   uploader: {
