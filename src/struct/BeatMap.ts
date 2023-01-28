@@ -1,4 +1,4 @@
-import type { BeatMapType } from "../types";
+import type { Json, v1ResBeatMapType } from "../types";
 import Util from "../util";
 import OcdlError from "./OcdlError";
 
@@ -12,12 +12,12 @@ export class BeatMap {
   mode?: number;
   difficulty_rating?: number;
 
-  constructor(jsonData: Record<string, any>) {
+  constructor(jsonData: Json) {
     // Check if required fields are present in the JSON response
     const und = Util.checkUndefined(jsonData, ["id", "checksum"]);
     if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
-    const { id, checksum } = jsonData as BeatMapType;
+    const { id, checksum } = jsonData as v1ResBeatMapType;
 
     this.id = id;
     this.checksum = checksum;

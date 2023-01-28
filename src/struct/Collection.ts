@@ -2,17 +2,18 @@ import OcdlError from "./OcdlError";
 import { BeatMapSet } from "./BeatMapSet";
 import Util from "../util";
 import {
-  BeatMapSetType,
-  CollectionType,
-  FullBeatMapType,
+  v1ResCollectionType,
+  Json,
   ModeByte,
+  v2ResBeatMapType,
+  v1ResBeatMapSetType,
 } from "../types";
 
 export class Collection {
   beatMapSets: Map<number, BeatMapSet> = new Map();
-  beatMapCount: number = 0;
-  id: number = 0;
-  name: string = "Unknown";
+  beatMapCount = 0;
+  id = 0;
+  name = "Unknown";
   uploader: {
     username: string;
   } = {
@@ -20,7 +21,7 @@ export class Collection {
   };
 
   // Populates the Collection instance with data from the given jsonData object
-  resolveData(jsonData: Record<string, any> = {}) {
+  resolveData(jsonData: Json = {}) {
     // Check for required fields in the jsonData object
     const und = Util.checkUndefined(jsonData, [
       "id",
@@ -31,7 +32,7 @@ export class Collection {
     // Throw an OcdlError if a required field is not present in the jsonData object
     if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
-    const { id, name, uploader, beatmapsets } = jsonData as CollectionType;
+    const { id, name, uploader, beatmapsets } = jsonData as v1ResCollectionType;
 
     this.id = id;
     this.name = name;
@@ -45,28 +46,26 @@ export class Collection {
     return Util.replaceForbiddenChars(this.name);
   }
 
-  // Populates the beatMapSet and beatMap instances within the Collection with data from the given jsonData array
-  resolveFullData(jsonData: Record<string, any>[]): void {
-    // Throw an OcdlError if the jsonData array is empty
-    if (!jsonData.length)
+  // Populates the beatMapSet and beatMap instances within the Collection with data from the given data array
+  resolveFullData(jsonBeatMaps: v2ResBeatMapType[]): void {
+    // Throw an OcdlError if the data array is empty
+    if (!jsonBeatMaps.length)
       throw new OcdlError("CORRUPTED_RESPONSE", "No beatmap found");
 
-    // Iterate through each element in the jsonData array
-    for (let i = 0; i < jsonData.length; i++) {
-      // Check for required fields in the current element of the jsonData array
-      const und = Util.checkUndefined(jsonData[i], [
+    // Iterate through each element in the data array
+    for (const data of jsonBeatMaps) {
+      // Check for required fields in the current element of the data array
+      const und = Util.checkUndefined(data, [
         "id",
         "mode",
         "difficulty_rating",
         "version",
         "beatmapset",
       ]);
-      // Throw an OcdlError if a required field is not present in the current element of the jsonData array
+      // Throw an OcdlError if a required field is not present in the current element of the data array
       if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
-      const { id, mode, difficulty_rating, version, beatmapset } = jsonData[
-        i
-      ] as FullBeatMapType;
+      const { id, mode, difficulty_rating, version, beatmapset } = data;
 
       const beatMapSet = this.beatMapSets.get(beatmapset.id);
       // Continue to the next iteration if the BeatMapSet instance was not found
@@ -90,10 +89,10 @@ export class Collection {
 
   // Returns a Map of beatmap set id to BeatMapSet instance, constructed from the given beatMapSetJson array
   private _resolveBeatMapSets(
-    beatMapSetJson: BeatMapSetType[]
+    jsonBeatMapSets: v1ResBeatMapSetType[]
   ): Map<number, BeatMapSet> {
     // Reduce the beatMapSetJson array to a Map, adding a new entry for each element in the array
-    return beatMapSetJson.reduce((acc, current) => {
+    return jsonBeatMapSets.reduce((acc, current) => {
       try {
         const map = new BeatMapSet(current);
         // Add an entry to the Map with the id of the BeatMapSet instance as the key and the instance as the value
@@ -107,8 +106,8 @@ export class Collection {
 
   // Reduce the beatMapSetJson array to the number of beatmaps.
   // This alternative method is used because the response from osu!Collector API is not always accurate
-  private _getBeatMapCount(beatMapSetJson: BeatMapSetType[]): number {
-    return beatMapSetJson.reduce((acc, current) => {
+  private _getBeatMapCount(jsonBeatMapSets: v1ResBeatMapSetType[]): number {
+    return jsonBeatMapSets.reduce((acc, current) => {
       const length = current.beatmaps.length;
       return acc + length;
     }, 0);

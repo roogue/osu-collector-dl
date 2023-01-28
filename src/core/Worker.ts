@@ -11,6 +11,7 @@ import chalk from "chalk";
 import { Message, Msg } from "../struct/Message";
 import Manager from "./Manager";
 import { Constant } from "../struct/Constant";
+import type { Cursors, Json, v2ResCollectionType } from "../types";
 
 export default class Worker extends Manager {
   monitor: Monitor;
@@ -31,7 +32,8 @@ export default class Worker extends Manager {
       );
 
     // Check for new version of this program
-    this.monitor.checkNewVersion();
+    // eslint-disable-next-line
+    this.monitor.checkNewVersion().catch();
 
     let id: number | null = null;
     let mode: number | null = null;
@@ -85,9 +87,12 @@ export default class Worker extends Manager {
     }
 
     // Fetch brief collection info
-    const responseData = await this._fetchCollection();
-    if (responseData instanceof OcdlError) throw responseData;
-    Manager.collection.resolveData(responseData);
+    try {
+      const responseData = await this._fetchCollection();
+      Manager.collection.resolveData(responseData);
+    } catch (e) {
+      throw new OcdlError("REQUEST_DATA_FAILED", e);
+    }
 
     // Task 3
     this.monitor.next();
@@ -95,40 +100,62 @@ export default class Worker extends Manager {
 
     // Fetch full data if user wants to generate osdb file
     if (Manager.config.mode === 2) {
-      let hasMorePage: boolean = true;
-      // The cursor which points to the next page
-      let cursor: number = 0;
-
-      // Loop through every beatmaps in the collection
-      while (hasMorePage) {
-        // Request v2 collection
-        const v2ResponseData = await this._fetchCollection(true, cursor);
-        if (v2ResponseData instanceof OcdlError) throw v2ResponseData;
-
-        try {
-          const und = Util.checkUndefined(v2ResponseData, [
-            "hasMore",
-            "nextPageCursor",
-            "beatmaps",
-          ]);
-          if (und)
-            throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
-
-          const { hasMore, nextPageCursor, beatmaps } = v2ResponseData;
-          // Resolve all required data
-          Manager.collection.resolveFullData(beatmaps);
-
-          hasMorePage = hasMore;
-          cursor = nextPageCursor;
-
-          // Update the current condition of monitor to display correct data
-          const fetched_collection =
-            this.monitor.condition.fetched_collection + beatmaps.length;
-          this.monitor.setCondition({ fetched_collection });
-          this.monitor.update();
-        } catch (e) {
-          throw new OcdlError("REQUEST_DATA_FAILED", e);
+      try {
+        // Check if cursors was already fetched and stored in database
+        let cursors: Cursors | undefined = undefined;
+        // Fetch cursors only if parallel mode is selected
+        if (Manager.config.parallel) {
+          cursors = await this._fetchCursors().catch(() => undefined);
         }
+        // If no cursors was fetched or the database is down/errored
+        if (!cursors) {
+          // Loop through every beatmaps in the collection
+          let cursor: number | undefined = undefined;
+          do {
+            const data = await this._fetchCollection(true, cursor);
+            const und = Util.checkUndefined(data, [
+              "nextPageCursor",
+              "beatmaps",
+            ]);
+            if (und) {
+              throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+            }
+            const { nextPageCursor, beatmaps } = data as v2ResCollectionType;
+            cursor = nextPageCursor;
+            Manager.collection.resolveFullData(beatmaps);
+
+            // Update the current condition of monitor to display correct data
+            const fetched_collection =
+              this.monitor.condition.fetched_collection + beatmaps.length;
+            this.monitor.setCondition({ fetched_collection });
+            this.monitor.update();
+          } while (cursor);
+        } else {
+          // Fetch all beatmaps in the collection with cursors from database
+          const fetchCollectionPromise = [] as Promise<Json>[];
+          for (const cursor of cursors) {
+            fetchCollectionPromise.push(this._fetchCollection(true, cursor));
+          }
+
+          const dataArray = await Promise.all(fetchCollectionPromise);
+          for (const data of dataArray) {
+            const und = Util.checkUndefined(data, ["beatmaps"]);
+            if (und) {
+              throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+            }
+
+            const { beatmaps } = data as v2ResCollectionType;
+            Manager.collection.resolveFullData(beatmaps);
+
+            // Update the current condition of monitor to display correct data
+            const fetched_collection =
+              this.monitor.condition.fetched_collection + beatmaps.length;
+            this.monitor.setCondition({ fetched_collection });
+            this.monitor.update();
+          }
+        }
+      } catch (e) {
+        throw new OcdlError("REQUEST_DATA_FAILED", e);
       }
     }
 
@@ -138,8 +165,10 @@ export default class Worker extends Manager {
 
     // Create folder for downloading beatmaps and generating osdb file
     try {
-      responseData.name = Util.replaceForbiddenChars(responseData.name);
-      const path = _path.join(Manager.config.directory, responseData.name);
+      const path = _path.join(
+        Manager.config.directory,
+        Manager.collection.getReplacedName()
+      );
       if (!existsSync(path)) mkdirSync(path);
     } catch (e) {
       throw new OcdlError("FOLDER_GENERATION_FAILED", e);
@@ -153,7 +182,7 @@ export default class Worker extends Manager {
     if (Manager.config.mode === 2) {
       try {
         const generator = new OsdbGenerator();
-        await generator.writeOsdb();
+        generator.writeOsdb();
       } catch (e) {
         throw new OcdlError("GENERATE_OSDB_FAILED", e);
       }
@@ -169,8 +198,8 @@ export default class Worker extends Manager {
     await new Promise<void>((r) => setTimeout(r, 3e3));
 
     try {
-      // Listen to current download state and log into console
       const downloadManager = new DownloadManager();
+      // Listen to current download state and log into console
       downloadManager.on("downloading", (beatMapSet) => {
         this.monitor.appendLog(
           chalk.gray`Downloading [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
@@ -205,39 +234,29 @@ export default class Worker extends Manager {
         this.monitor.update();
       });
 
-      downloadManager.bulk_download();
-
-      // Create a new promise instance to wait every download process done
-      await new Promise<void>((resolve) => {
-        downloadManager.on("end", (beatMapSet) => {
-          // For beatmap sets which were failed to download, generate a missing log to notice the user
-          for (let i = 0; i < beatMapSet.length; i++) {
-            Logger.generateMissingLog(
-              Manager.collection.name,
-              beatMapSet[i].id.toString()
-            );
-          }
-          resolve();
-        });
-      });
+      const notDownloadedBeatMapSet = await downloadManager.bulk_download();
+      // For beatmap sets which were failed to download, generate a missing log to notice the user
+      for (let i = 0; i < notDownloadedBeatMapSet.length; i++) {
+        Logger.generateMissingLog(
+          Manager.collection.name,
+          notDownloadedBeatMapSet[i].id.toString()
+        );
+      }
     } catch (e) {
-      throw e;
+      throw new OcdlError("MANAGE_DOWNLOAD_FAILED", e);
     }
 
     this.monitor.freeze("\nDownload finished");
   }
 
-  private async _fetchCollection(
-    v2: boolean = false,
-    cursor: number = 0
-  ): Promise<Record<string, any> | OcdlError> {
+  private async _fetchCollection(v2 = false, cursor = 0): Promise<Json> {
     // Use different endpoint for different version of api request
     const url =
       Constant.OsuCollectorApiUrl +
       Manager.collection.id.toString() +
       (v2 ? "/beatmapsV2" : "");
 
-    const query: Record<string, any> = // Query is needed for V2 collection
+    const query: Record<string, number> = // Query is needed for V2 collection
       v2
         ? {
             perPage: 100,
@@ -248,11 +267,28 @@ export default class Worker extends Manager {
     const data = await request(url, { method: "GET", query })
       .then(async (res) => {
         if (res.statusCode !== 200) throw `Status code: ${res.statusCode}`;
-        return (await res.body.json()) as Record<string, any>;
+        return (await res.body.json()) as Json;
       })
-      .catch((e) => new OcdlError("REQUEST_DATA_FAILED", e));
+      .catch((e: unknown) => new OcdlError("REQUEST_DATA_FAILED", e));
     if (data instanceof OcdlError) throw data;
 
+    return data;
+  }
+
+  private async _fetchCursors(): Promise<Cursors> {
+    const url =
+      Constant.OsuCollectorDbApiUrl +
+      "collections/?id=" +
+      Manager.collection.id.toString();
+
+    const data = await request(url, { method: "GET", headersTimeout: 5e3 }) // Set 5 Seconds Timeout
+      .then(async (res) => {
+        if (res.statusCode !== 200) throw `Status code: ${res.statusCode}`;
+        return (await res.body.json()) as Cursors;
+      })
+      .catch((e: unknown) => new OcdlError("REQUEST_DATA_FAILED", e));
+
+    if (data instanceof OcdlError) throw data;
     return data;
   }
 }

@@ -5,6 +5,8 @@ import { Message, Msg } from "../struct/Message";
 import OcdlError from "../struct/OcdlError";
 import Util from "../util";
 import Manager from "./Manager";
+import promptSync from "prompt-sync";
+import { version } from "../../package.json";
 
 interface Condition {
   new_version: string;
@@ -21,7 +23,7 @@ export default class Monitor extends Manager {
   // Current progress of the application
   private progress = 0;
   // Console prompt for user input and freezing purpose
-  private prompt = require("prompt-sync")({ sigint: true });
+  private prompt = promptSync({ sigint: true });
   // Object containing functions for each task
   private readonly task: Record<number, () => void>;
 
@@ -39,14 +41,13 @@ export default class Monitor extends Manager {
       download_log: [],
     };
 
-    this.version = (require("../../package.json")?.version ??
-      "Unknown") as string; // Get current version from package.json
+    this.version = version;
 
     // Set terminal title according to it's version
     Util.setTerminalTitle(`osu-collector-dl v${this.version}`);
 
     this.task = {
-      0: () => {}, // Empty function
+      0: () => undefined, // Empty function
       1: this.p_input_id.bind(this), // Get Input id
       2: this.p_input_mode.bind(this), // Get Input mode
       3: this.p_fetch_collection.bind(this), // Fetch collection
@@ -87,7 +88,7 @@ export default class Monitor extends Manager {
     return this;
   }
 
-  freeze(message: string, isErrored: boolean = false): void {
+  freeze(message: string, isErrored = false): void {
     // If errored, the message is in red, otherwise green
     log(isErrored ? chalk.red(message) : chalk.greenBright(message));
 
@@ -99,7 +100,7 @@ export default class Monitor extends Manager {
   }
 
   // Stop the console and wait for user input
-  awaitInput(message: string, value?: any): string {
+  awaitInput(message: string, value = ""): string {
     return this.prompt(message + " ", value);
   }
 
@@ -108,7 +109,7 @@ export default class Monitor extends Manager {
     this.progress++;
   }
 
-  setCondition(new_condition: Record<string, any>): void {
+  setCondition(new_condition: Partial<Condition>): void {
     Object.assign(this.condition, new_condition);
   }
 

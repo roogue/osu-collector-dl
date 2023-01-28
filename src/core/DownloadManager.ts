@@ -12,8 +12,6 @@ import { Constant } from "../struct/Constant";
 interface DownloadManagerEvents {
   downloaded: (beatMapSet: BeatMapSet) => void;
   error: (beatMapSet: BeatMapSet, e: unknown) => void;
-  // Emitted when all beatmaps have finished downloading (or have failed to download)
-  end: (beatMapSet: BeatMapSet[]) => void;
   retrying: (beatMapSet: BeatMapSet) => void;
   downloading: (beatMapSet: BeatMapSet) => void;
 }
@@ -50,18 +48,18 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
   }
 
   // The primary method for downloading beatmaps
-  public async bulk_download(): Promise<void> {
+  public async bulk_download(): Promise<BeatMapSet[]> {
     // If `parallel` is true, download beatmaps in parallel using the `_impulse` method
     if (this.parallel) {
       await this._impulse();
     } else {
       // Otherwise, download beatmaps sequentially
-      for (const [_, beatMapSet] of Manager.collection.beatMapSets) {
+      for (const [, beatMapSet] of Manager.collection.beatMapSets) {
         await this._downloadFile(beatMapSet);
       }
     }
 
-    this.emit("end", this.not_downloaded);
+    return this.not_downloaded;
   }
 
   // Downloads a single beatmap file
@@ -72,7 +70,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
     // Construct the URL for the beatmap file
     const url =
       (options.alt ? Constant.OsuMirrorAltApiUrl : Constant.OsuMirrorApiUrl) +
-      beatMapSet.id;
+      beatMapSet.id.toString();
 
     // Request the download
     try {
@@ -85,20 +83,19 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       // Check if the specified directory exists
       if (!this._checkIfDirectoryExists()) this.path = process.cwd();
       // Create a write stream for the file
-      await new Promise<void>(async (resolve, reject) => {
-        const file = createWriteStream(_path.join(this.path, fileName));
-        file.on("error", (e) => {
-          reject(e);
-        });
 
-        // Write the file in chunks as the data is received
-        for await (const chunk of res.body!) {
+      const file = createWriteStream(_path.join(this.path, fileName));
+
+      // Write the file in chunks as the data is received
+      if (res.body) {
+        for await (const chunk of res.body) {
           file.write(chunk);
         }
+      } else {
+        throw "res.body is null";
+      }
 
-        file.end();
-        resolve();
-      });
+      file.end();
 
       this.emit("downloaded", beatMapSet);
     } catch (e) {
@@ -106,7 +103,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       if (options.retries) {
         this.emit("retrying", beatMapSet);
         // Retry the download with one fewer retry remaining, and use the alternative URL if this is the last retry
-        this._downloadFile(beatMapSet, {
+        await this._downloadFile(beatMapSet, {
           alt: options.retries === 1,
           retries: options.retries - 1,
         });
@@ -160,7 +157,8 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
 
       // For the beatmap set on the range, push to a promise and download it in a burst
       for (const id of range) {
-        const beatMapSet = Manager.collection.beatMapSets.get(id)!; // Always have a value
+        const beatMapSet = Manager.collection.beatMapSets.get(id);
+        if (!beatMapSet) throw "beatMapSet is forbidden";
         promises.push(this._downloadFile(beatMapSet));
       }
 

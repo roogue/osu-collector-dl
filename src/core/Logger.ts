@@ -15,13 +15,15 @@ export default class Logger {
         // If it does not, create the file and write the error stack trace to it
         writeFileSync(
           Logger.errorLogPath,
-          `=== Error Log ===\n${error.stack}\n=========\n`
+          `=== Error Log ===\n${
+            error.stack ?? "Unknown error stack"
+          }\n=========\n`
         );
       } else {
         // If the file does exist, append the error stack trace to it
         appendFileSync(
           Logger.errorLogPath,
-          `${error.stack}\n=================\n`
+          `${error.stack ?? "Unknown error stack"}\n=================\n`
         );
       }
       return true;

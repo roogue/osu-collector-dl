@@ -1,6 +1,7 @@
 import { existsSync, writeFileSync } from "fs";
 import path from "path";
 import Logger from "../core/Logger";
+import type { Json, JsonValues } from "../types";
 import Util from "../util";
 import OcdlError from "./OcdlError";
 
@@ -23,11 +24,11 @@ export default class Config {
   // Constructs a new Config object from a string of JSON data
   // If no data is provided, default values are used
   constructor(contents?: string) {
-    let config: Record<string, any> = {};
+    let config: Json = {};
     if (contents) {
       try {
         // Parse the JSON data and store it in the 'config' object
-        config = JSON.parse(contents);
+        config = JSON.parse(contents) as Json;
       } catch (e) {
         // If there is an error parsing the JSON data, throw an OcdlError
         throw Logger.generateErrorLog(new OcdlError("INVALID_CONFIG", e));
@@ -35,10 +36,10 @@ export default class Config {
     }
 
     // Set default values for properties if not provided in 'config' object
-    this.logSize = !isNaN(Number(config.logSize))
-      ? Number(config.logSize)
-      : 15;
-    this.parallel = Util.isBoolean(config.parallel) ? config.parallel : true;
+    this.logSize = !isNaN(Number(config.logSize)) ? Number(config.logSize) : 15;
+    this.parallel = Util.isBoolean(config.parallel)
+      ? (config.parallel as boolean)
+      : true;
     this.concurrency = !isNaN(Number(config.concurrency))
       ? Number(config.concurrency)
       : 10;
@@ -70,13 +71,13 @@ export default class Config {
 
   // Returns the mode of operation based on the provided data
   // If the provided data is invalid, returns 1 (Download BeatmapSet)
-  private _getMode(data: any): number {
+  private _getMode(data: JsonValues): number {
     return data == 1 ? 1 : data == 2 ? 2 : 1;
   }
 
   // Returns the directory path based on the provided data
   // If the provided data is invalid, returns the current working directory
-  private _getPath(data: any): string {
+  private _getPath(data: JsonValues): string {
     if (typeof data !== "string") return process.cwd();
     return path.isAbsolute(data) ? data : process.cwd();
   }

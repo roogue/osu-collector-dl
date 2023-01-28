@@ -1,4 +1,4 @@
-import type { BeatMapSetType, BeatMapType } from "../types";
+import type { Json, v1ResBeatMapSetType, v1ResBeatMapType } from "../types";
 import Util from "../util";
 import { BeatMap } from "./BeatMap";
 import OcdlError from "./OcdlError";
@@ -12,13 +12,13 @@ export class BeatMapSet {
   title?: string;
   artist?: string;
 
-  constructor(jsonData: Record<string, any>) {
+  constructor(jsonData: Json) {
     // Check if required fields are present in the JSON response
     const und = Util.checkUndefined(jsonData, ["id", "beatmaps"]);
     if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
 
     // Destructure the JSON data and assign to object properties
-    const { id, beatmaps } = jsonData as BeatMapSetType;
+    const { id, beatmaps } = jsonData as v1ResBeatMapSetType;
     this.id = id;
     this.beatMaps = this._resolveBeatMaps(beatmaps);
   }
@@ -30,8 +30,10 @@ export class BeatMapSet {
   }
 
   // Helper function to create a Map of beatmap IDs to BeatMap objects from JSON data
-  private _resolveBeatMaps(beatMapJson: BeatMapType[]): Map<number, BeatMap> {
-    return beatMapJson.reduce((acc, current) => {
+  private _resolveBeatMaps(
+    jsonBeatMaps: v1ResBeatMapType[]
+  ): Map<number, BeatMap> {
+    return jsonBeatMaps.reduce((acc, current) => {
       try {
         const map = new BeatMap(current);
         acc.set(map.id, map);
