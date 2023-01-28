@@ -6,7 +6,7 @@ import OcdlError from "../struct/OcdlError";
 import Util from "../util";
 import Manager from "./Manager";
 import promptSync from "prompt-sync";
-import { version } from "../../package.json";
+import { LIB_VERSION } from "../version";
 
 interface Condition {
   new_version: string;
@@ -41,7 +41,7 @@ export default class Monitor extends Manager {
       download_log: [],
     };
 
-    this.version = version;
+    this.version = LIB_VERSION;
 
     // Set terminal title according to it's version
     Util.setTerminalTitle(`osu-collector-dl v${this.version}`);

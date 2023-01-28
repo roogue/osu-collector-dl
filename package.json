@@ -8,14 +8,15 @@
     "lint": "prettier --check . && eslint .",
     "lint-fix": "eslint . --fix",
     "prettier": "prettier --write \"**/*.{ts,json,yml,yaml,md}\"",
-    "build-ts": "tsc -p .",
+    "prebuild-ts": "node -p \"'export const LIB_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > src/version.ts",
+    "build-ts": "yarn prebuild-ts && tsc -p .",
     "build-app-win": "yarn build-ts && pkg -t node16-win-x64 -o ./build/win-x64/osu-collector-dl.exe ./dist/index.js --public",
     "build-app-linux": "yarn build-ts && pkg -t node16-linux -o ./build/linux-arm64/osu-collector-dl ./dist/index.js --public",
     "build-app": "yarn build-app-win && yarn build-app-linux",
     "cp-build-win": "cp ./{LICENSE,README.md} ./build/win-x64/ && cp ./config.json.example ./build/win-x64/config.json",
     "cp-build-linux": "cp ./{LICENSE,README.md} ./build/linux-arm64/ && cp ./config.json.example ./build/linux-arm64/config.json",
     "cp-build": "yarn cp-build-win && yarn cp-build-linux",
-    "clean-folder": "rm -r ./build"
+    "clean-folder": "rm -rf ./build"
   },
   "license": "MIT",
   "dependencies": {
@@ -29,6 +30,7 @@
     "@types/node": "^18.0.6",
     "@types/prompt-sync": "^4.2.0",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.49.0",
     "eslint": "^8.0.1",
     "eslint-config-standard-with-typescript": "latest",
     "eslint-plugin-import": "^2.25.2",

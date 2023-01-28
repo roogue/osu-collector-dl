@@ -2,10 +2,10 @@
 // * Reference: https://github.com/roogue/osu-collector-node/blob/main/src/typings/Collection.ts
 
 // Basic Json Interface
-interface Json {
+export interface Json {
   [x: string]: JsonValues;
 }
-type JsonValues = string | number | boolean | Date | Json | JsonArray;
+export type JsonValues = string | number | boolean | Date | Json | JsonArray;
 type JsonArray = Array<string | number | boolean | Date | Json | JsonArray>;
 
 // Basic collection data types

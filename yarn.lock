@@ -166,7 +166,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/parser@npm:^5.0.0":
+"@typescript-eslint/parser@npm:^5.0.0, @typescript-eslint/parser@npm:^5.49.0":
   version: 5.49.0
   resolution: "@typescript-eslint/parser@npm:5.49.0"
   dependencies:
@@ -2116,6 +2116,7 @@ __metadata:
     "@types/node": ^18.0.6
     "@types/prompt-sync": ^4.2.0
     "@typescript-eslint/eslint-plugin": ^5.0.0
+    "@typescript-eslint/parser": ^5.49.0
     chalk: 4.1.2
     csbinary: ^2.1.4
     eslint: ^8.0.1
