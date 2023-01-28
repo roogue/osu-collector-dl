@@ -28,68 +28,64 @@ export default class OsdbGenerator extends Manager {
   }
 
   // * Refer https://github.com/Piotrekol/CollectionManager/blob/master/CollectionManagerDll/Modules/FileIO/FileCollections/OsdbCollectionHandler.cs#L89
-  async writeOsdb(): Promise<void> {
-    try {
-      // The version of the osdb file
-      // Using version o!dm6 so the file does not need to be compressed
-      this.writer.writeString("o!dm6");
+  writeOsdb(): void {
+    // The version of the osdb file
+    // Using version o!dm6 so the file does not need to be compressed
+    this.writer.writeString("o!dm6");
 
-      // OADate
-      this.writer.writeDouble(this._toOADate(new Date()));
+    // OADate
+    this.writer.writeDouble(this._toOADate(new Date()));
 
-      // Editor of the collection
-      this.writer.writeString(Manager.collection.uploader.username);
+    // Editor of the collection
+    this.writer.writeString(Manager.collection.uploader.username);
 
-      // Number of collections
-      this.writer.writeInt32(1); // Always 1
+    // Number of collections
+    this.writer.writeInt32(1); // Always 1
 
-      // Collection name
-      this.writer.writeString(Manager.collection.name);
+    // Collection name
+    this.writer.writeString(Manager.collection.name);
 
-      // Beatmap count
-      this.writer.writeInt32(Manager.collection.beatMapCount);
+    // Beatmap count
+    this.writer.writeInt32(Manager.collection.beatMapCount);
 
-      // Write the info for each beatmap in the collection
-      Manager.collection.beatMapSets.forEach((beatMapSet, beatMapSetId) => {
-        beatMapSet.beatMaps.forEach((beatmap, beatMapId) => {
-          // Beatmap id
-          this.writer.writeInt32(beatMapId);
+    // Write the info for each beatmap in the collection
+    Manager.collection.beatMapSets.forEach((beatMapSet, beatMapSetId) => {
+      beatMapSet.beatMaps.forEach((beatmap, beatMapId) => {
+        // Beatmap id
+        this.writer.writeInt32(beatMapId);
 
-          // Beatmap set id
-          this.writer.writeInt32(beatMapSetId);
+        // Beatmap set id
+        this.writer.writeInt32(beatMapSetId);
 
-          // Artist of the beatmap set
-          this.writer.writeString(beatMapSet.artist ?? "Unknown");
-          // Title of the beatmap set
-          this.writer.writeString(beatMapSet.title ?? "Unknown");
-          // Version of the beatmap
-          this.writer.writeString(beatmap.version ?? "Unknown");
+        // Artist of the beatmap set
+        this.writer.writeString(beatMapSet.artist ?? "Unknown");
+        // Title of the beatmap set
+        this.writer.writeString(beatMapSet.title ?? "Unknown");
+        // Version of the beatmap
+        this.writer.writeString(beatmap.version ?? "Unknown");
 
-          // Md5 of the beatmap
-          this.writer.writeString(beatmap.checksum);
+        // Md5 of the beatmap
+        this.writer.writeString(beatmap.checksum);
 
-          // User comment, leave it as empty string
-          this.writer.writeString("");
+        // User comment, leave it as empty string
+        this.writer.writeString("");
 
-          // The mode of the beatmap
-          this.writer.writeByte(beatmap.mode ?? 0);
+        // The mode of the beatmap
+        this.writer.writeByte(beatmap.mode ?? 0);
 
-          // The difficulty rating of the beatmap
-          this.writer.writeDouble(beatmap.difficulty_rating ?? 0);
-        });
+        // The difficulty rating of the beatmap
+        this.writer.writeDouble(beatmap.difficulty_rating ?? 0);
       });
+    });
 
-      // Map with hash
-      this.writer.writeInt32(0); // Always 0
+    // Map with hash
+    this.writer.writeInt32(0); // Always 0
 
-      // Footer
-      this.writer.writeString("By Piotrekol"); // Fixed Footer, which is used to determine if the file was corrupted or not
-    } catch (e) {
-      throw e;
-    } finally {
-      // Close the writer properly after the writing process was errored or done
-      this._closeWriter();
-    }
+    // Footer
+    this.writer.writeString("By Piotrekol"); // Fixed Footer, which is used to determine if the file was corrupted or not
+
+    // Close the writer properly after the writing process was errored or done
+    this._closeWriter();
   }
 
   // Calculation of current date to OADate

@@ -1,20 +1,20 @@
 import { request } from "undici";
 import { Constant } from "./struct/Constant";
+import dns from "dns";
+import type { Json } from "./types";
 
 export default class Util {
-  static isBoolean(obj: any): boolean {
+  static isBoolean(obj: unknown): boolean {
     return !!obj === obj;
   }
 
   static replaceForbiddenChars(str: string): string {
-    const regex = /[\\\/<>:"\|?*]+/g;
+    const regex = /[\\/<>:"|?*]+/g;
     return str.replace(regex, "");
   }
 
   static async isOnline(): Promise<boolean> {
-    return !!(await require("dns")
-      .promises.resolve("google.com")
-      .catch(() => {}));
+    return !!(await dns.promises.resolve("google.com").catch(() => false));
   }
 
   static async checkNewVersion(
@@ -34,9 +34,7 @@ export default class Util {
     }).catch(() => null);
 
     if (!res || res.statusCode !== 200) return null;
-    const data = (await res.body.json().catch(() => null)) as
-      | Record<string, any>[]
-      | null;
+    const data = (await res.body.json().catch(() => null)) as Json[] | null;
     if (!data) return null;
 
     // Check version
@@ -47,11 +45,11 @@ export default class Util {
   }
 
   static checkUndefined(
-    obj: Record<string, any>,
+    obj: Record<string, unknown>,
     fields: string[]
   ): string | null {
     for (const field of fields) {
-      if (!obj.hasOwnProperty(field)) {
+      if (!Object.prototype.hasOwnProperty.call(obj, field)) {
         return field;
       }
     }
