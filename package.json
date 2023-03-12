@@ -24,7 +24,7 @@
     "csbinary": "^2.1.4",
     "prompt-sync": "^4.2.0",
     "tslib": "^2.4.1",
-    "undici": "^5.14.0"
+    "undici": "^5.19.1"
   },
   "devDependencies": {
     "@types/node": "^18.0.6",
