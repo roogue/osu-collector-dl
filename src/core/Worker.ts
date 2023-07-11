@@ -51,8 +51,6 @@ export default class Worker extends Manager {
           this.monitor.awaitInput(Msg.INPUT_ID, {}, "None")
         );
 
-        console.log(result);
-
         // Check if result is valid
         if (!isNaN(result)) {
           id = result;
@@ -118,9 +116,7 @@ export default class Worker extends Manager {
 
       // If no cursors was fetched or the database is down/errored
       if (cursors) {
-        if (!cursors.length) {
-          cursors = [0]; // Temporary fix for empty array, tbh I am just lazy to fix it
-        }
+        cursors.unshift(0); // Fetch the first page with cursor 0
         // Fetch all beatmaps in the collection with cursors from database
         const fetchCollectionPromise = [] as Promise<Json>[];
         for (const cursor of cursors) {
