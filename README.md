@@ -1,6 +1,6 @@
 # osu-collector-dl
 
-A script that automates the downloading of beatmap sets in Osu!Collector.
+A program that automates the download of beatmap sets in Osu!Collector.
 
 ## Installation
 
@@ -10,7 +10,9 @@ A script that automates the downloading of beatmap sets in Osu!Collector.
 ## Usage
 
 1. Run the `osu-collector-dl.exe` file from the downloaded folder.
-2. A prompt window will appear. You will need to enter the ID of the collection you want to download. To find the ID, look at the end of the Osu!Collector collection URL. For example, if the URL is https://osucollector.com/collections/44, you would enter 44 as the ID.
+2. Enter the ID of the collection you want to download. To find the ID, look at the end of the Osu!Collector collection URL. For example, if the URL is https://osucollector.com/collections/44/speed-practice, you would enter 44 as the ID.
+3. Select a working mode.
+4. Wait until the program finishes its task.
 
 ## Configuration
 
