@@ -1,6 +1,6 @@
 {
   "name": "osu-collector-dl",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "main": "./dist/index.js",
   "scripts": {
     "build": "yarn run clean-folder && yarn run build-app && yarn run cp-build",
@@ -22,6 +22,7 @@
   "dependencies": {
     "chalk": "4.1.2",
     "csbinary": "^2.1.4",
+    "p-queue": "6.6.2",
     "prompt-sync": "^4.2.0",
     "tslib": "^2.4.1",
     "undici": "^5.19.1"
