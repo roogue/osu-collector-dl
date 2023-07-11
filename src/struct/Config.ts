@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from "fs";
 import path from "path";
 import Logger from "../core/Logger";
-import type { Json, JsonValues } from "../types";
+import type { Json, JsonValues, WorkingMode } from "../types";
 import Util from "../util";
 import OcdlError from "./OcdlError";
 
@@ -15,7 +15,8 @@ export default class Config {
   // The mode of operation
   // 1: Download BeatmapSet
   // 2: Download BeatmapSet + Generate .osdb
-  mode: number;
+  // 3: Generate .osdb
+  mode: WorkingMode;
   // The length of the log when downloading beatmapsets
   logSize: number;
   // The path to the config file
@@ -71,8 +72,8 @@ export default class Config {
 
   // Returns the mode of operation based on the provided data
   // If the provided data is invalid, returns 1 (Download BeatmapSet)
-  private _getMode(data: JsonValues): number {
-    return data == 1 ? 1 : data == 2 ? 2 : 1;
+  private _getMode(data: JsonValues): 1 | 2 | 3 {
+    return data == 1 ? 1 : data == 2 ? 2 : data == 3 ? 3 : 1;
   }
 
   // Returns the directory path based on the provided data
