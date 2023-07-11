@@ -38,7 +38,7 @@ Below is the data stored in config.json, along with explanations of each setting
 
 - `directory`: The path to the folder where you want to save the downloaded beatmaps. If no value is provided, the current working directory will be used. Remember to include double quotes around the path!
 
-- `mode`: The mode in which the program should operate. Set to `1` to only download the beatmap sets, or `2` to also generate a .osdb file during the download process. You can also specify the mode at the terminal.
+- `mode`: The mode in which the program should operate. Set to `1` to only download the beatmap sets, or `2` to also generate a .osdb file during the download process. While set to `3`, the program will only generate the .osdb file. You can also specify the mode at the terminal.
 
 ## FAQ
 
