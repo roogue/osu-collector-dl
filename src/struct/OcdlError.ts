@@ -7,7 +7,7 @@ export enum ErrorType {
   "REQUEST_DATA_FAILED" = "Error occurred while requesting data",
   "FOLDER_GENERATION_FAILED" = "Error occurred while generating folder",
   "FILE_NAME_EXTRACTION_FAILED" = "Error occurred while extracting file name",
-  "MESSAGE_GENERATOR_FAILED" = "Error occurred while updating monitor",
+  "MESSAGE_GENERATION_FAILED" = "Error occurred while updating monitor",
   "CORRUPTED_RESPONSE" = "The api response is corrupted",
   "MANAGE_DOWNLOAD_FAILED" = "Error occurred while processing downloads",
 }

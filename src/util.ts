@@ -21,6 +21,7 @@ export default class Util {
     current_version: string
   ): Promise<string | null> {
     if (current_version === "Unknown") return null;
+
     const res = await request(Constant.GithubReleaseApiUrl, {
       method: "GET",
       headers: {

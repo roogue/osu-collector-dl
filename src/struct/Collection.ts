@@ -1,18 +1,19 @@
 import OcdlError from "./OcdlError";
-import { BeatMapSet } from "./BeatMapSet";
+import { BeatMapSet, BeatMapSetId } from "./BeatMapSet";
 import Util from "../util";
+import { Json, ModeByte } from "../types";
 import {
-  v1ResCollectionType,
-  Json,
-  ModeByte,
-  v2ResBeatMapType,
   v1ResBeatMapSetType,
-} from "../types";
+  v1ResCollectionType,
+  v2ResBeatMapType,
+} from "../core/Requestor";
+
+export type CollectionId = number;
 
 export class Collection {
-  beatMapSets: Map<number, BeatMapSet> = new Map();
+  beatMapSets: Map<BeatMapSetId, BeatMapSet> = new Map();
   beatMapCount = 0;
-  id = 0;
+  id: CollectionId = 0;
   name = "Unknown";
   uploader: {
     username: string;
@@ -30,7 +31,9 @@ export class Collection {
       "beatmapsets",
     ]);
     // Throw an OcdlError if a required field is not present in the jsonData object
-    if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+    if (und) {
+      throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+    }
 
     const { id, name, uploader, beatmapsets } = jsonData as v1ResCollectionType;
 
@@ -49,8 +52,9 @@ export class Collection {
   // Populates the beatMapSet and beatMap instances within the Collection with data from the given data array
   resolveFullData(jsonBeatMaps: v2ResBeatMapType[]): void {
     // Throw an OcdlError if the data array is empty
-    if (!jsonBeatMaps.length)
+    if (!jsonBeatMaps.length) {
       throw new OcdlError("CORRUPTED_RESPONSE", "No beatmap found");
+    }
 
     // Iterate through each element in the data array
     for (const data of jsonBeatMaps) {
@@ -63,7 +67,9 @@ export class Collection {
         "beatmapset",
       ]);
       // Throw an OcdlError if a required field is not present in the current element of the data array
-      if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+      if (und) {
+        throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+      }
 
       const { id, mode, difficulty_rating, version, beatmapset } = data;
 

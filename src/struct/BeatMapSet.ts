@@ -1,12 +1,15 @@
-import type { Json, v1ResBeatMapSetType, v1ResBeatMapType } from "../types";
+import { v1ResBeatMapSetType, v1ResBeatMapType } from "../core/Requestor";
+import type { Json } from "../types";
 import Util from "../util";
-import { BeatMap } from "./BeatMap";
+import { BeatMap, BeatMapId } from "./BeatMap";
 import OcdlError from "./OcdlError";
+
+export type BeatMapSetId = number;
 
 export class BeatMapSet {
   // Compulsory property
-  id: number;
-  beatMaps: Map<number, BeatMap>;
+  id: BeatMapSetId;
+  beatMaps: Map<BeatMapId, BeatMap>;
 
   // Nullable property
   title?: string;
@@ -15,7 +18,9 @@ export class BeatMapSet {
   constructor(jsonData: Json) {
     // Check if required fields are present in the JSON response
     const und = Util.checkUndefined(jsonData, ["id", "beatmaps"]);
-    if (und) throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+    if (und) {
+      throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+    }
 
     // Destructure the JSON data and assign to object properties
     const { id, beatmaps } = jsonData as v1ResBeatMapSetType;
@@ -25,7 +30,9 @@ export class BeatMapSet {
 
   // Returns the title with forbidden characters replaced, or null if title is not present
   getReplacedName(): string | null {
-    if (!this.title) return null;
+    if (!this.title) {
+      return null;
+    }
     return Util.replaceForbiddenChars(this.title);
   }
 

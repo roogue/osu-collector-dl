@@ -1,17 +1,16 @@
 import { DownloadManager } from "./DownloadManager";
-import { request } from "undici";
 import OsdbGenerator from "./OsdbGenerator";
 import OcdlError from "../struct/OcdlError";
 import { existsSync, mkdirSync } from "fs";
 import _path from "path";
 import Util from "../util";
-import Monitor from "./Monitor";
+import Monitor, { DisplayTextColor } from "./Monitor";
 import Logger from "./Logger";
-import chalk from "chalk";
-import { Message, Msg } from "../struct/Message";
+import { Msg } from "../struct/Message";
 import Manager from "./Manager";
-import { Constant } from "../struct/Constant";
-import type { Cursors, Json, v2ResCollectionType } from "../types";
+import type { Cursors, Json, WorkingMode } from "../types";
+import { Requestor, v2ResCollectionType } from "./Requestor";
+import { LIB_VERSION } from "../version";
 
 export default class Worker extends Manager {
   monitor: Monitor;
@@ -22,62 +21,68 @@ export default class Worker extends Manager {
   }
 
   async run(): Promise<void> {
+    this.monitor.update();
+
     // Check if internet connection is presence
+    this.monitor.displayMessage(Msg.CHECK_INTERNET_CONNECTION);
     const onlineStatus = await Util.isOnline();
     // Stop the process if user is not connected to internet
-    if (!onlineStatus)
-      return this.monitor.freeze(
-        new Message(Msg.NO_CONNECTION).toString(),
-        true
-      );
+    if (!onlineStatus) return this.monitor.freeze(Msg.NO_CONNECTION, {}, true);
 
     // Check for new version of this program
-    // eslint-disable-next-line
-    this.monitor.checkNewVersion().catch();
+    this.monitor.displayMessage(Msg.CHECK_NEW_VERSION);
+    const newVersion = await Util.checkNewVersion(LIB_VERSION);
+    if (newVersion) {
+      this.monitor.setCondition({ new_version: newVersion });
+    }
 
     let id: number | null = null;
-    let mode: number | null = null;
+    let mode: WorkingMode | null = null;
 
     try {
       // Task 1
-      this.monitor.next();
+      this.monitor.nextTask();
 
       // Get the collection id from user input
       while (id === null) {
         this.monitor.update();
 
-        const result = Number(
-          this.monitor.awaitInput(new Message(Msg.INPUT_ID).toString(), "none")
+        const result = parseInt(
+          this.monitor.awaitInput(Msg.INPUT_ID, {}, "None")
         );
+
+        console.log(result);
+
         // Check if result is valid
-        if (!isNaN(result)) id = result;
+        if (!isNaN(result)) {
+          id = result;
+        }
         // Set retry to true to display the hint if user incorrectly inserted unwanted value
-        this.monitor.condition.retry_input = true;
+        this.monitor.setCondition({ retry_input: true });
       }
 
       // Set collection id after getting input from user
       Manager.collection.id = id;
 
       // Task 2
-      this.monitor.next();
+      this.monitor.nextTask();
 
       // Get the working mode from user input
       while (mode === null) {
         this.monitor.update();
 
-        const result = String(
-          this.monitor.awaitInput(
-            new Message(Msg.INPUT_MODE, {
-              mode: Manager.config.mode === 2 ? "Yes" : "No",
-            }).toString(),
-            Manager.config.mode.toString() // Use default working mode from config if the user did not insert any value
-          )
+        const result = this.monitor.awaitInput(
+          Msg.INPUT_MODE,
+          { mode: Manager.config.mode.toString() },
+          Manager.config.mode.toString() // Use default working mode from config if the user did not insert any value
         );
-        // Validate if the user input is 1 or 2
-        if (["n", "no", "1"].includes(result)) mode = 1;
-        if (["y", "yes", "ass", "2"].includes(result)) mode = 2;
+
+        // Validate if the user input is 1 or 2 or 3
+        if (["1", "2", "3"].includes(result)) {
+          mode = parseInt(result) as WorkingMode;
+        }
         // Set retry to true to display the hint if user incorrectly inserted unwanted value
-        this.monitor.condition.retry_mode = true;
+        this.monitor.setCondition({ retry_mode: true });
       }
 
       // Set the working mode after getting input from user
@@ -88,80 +93,99 @@ export default class Worker extends Manager {
 
     // Fetch brief collection info
     try {
-      const responseData = await this._fetchCollection();
-      Manager.collection.resolveData(responseData);
+      const v1ResponseData = await Requestor.fetchCollection(
+        Manager.collection.id
+      );
+      Manager.collection.resolveData(v1ResponseData);
     } catch (e) {
       throw new OcdlError("REQUEST_DATA_FAILED", e);
     }
 
     // Task 3
-    this.monitor.next();
-    this.monitor.update();
+    this.monitor.nextTask();
 
     // Fetch full data if user wants to generate osdb file
-    if (Manager.config.mode === 2) {
-      try {
-        // Check if cursors was already fetched and stored in database
-        let cursors: Cursors | undefined = undefined;
-        // Fetch cursors only if parallel mode is selected
-        if (Manager.config.parallel) {
-          cursors = await this._fetchCursors().catch(() => undefined);
-        }
-        // If no cursors was fetched or the database is down/errored
-        if (!cursors) {
-          // Loop through every beatmaps in the collection
-          let cursor: number | undefined = undefined;
-          do {
-            const data = await this._fetchCollection(true, cursor);
-            const und = Util.checkUndefined(data, [
-              "nextPageCursor",
-              "beatmaps",
-            ]);
-            if (und) {
-              throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
-            }
-            const { nextPageCursor, beatmaps } = data as v2ResCollectionType;
-            cursor = nextPageCursor;
-            Manager.collection.resolveFullData(beatmaps);
+    if (Manager.config.mode !== 1) {
+      // Check if cursors was already fetched and stored in database
+      let cursors: Cursors | undefined = undefined;
+      let fetchedCollectionCount = 0;
+      // Fetch cursors only if parallel mode is selected
+      if (Manager.config.parallel) {
+        cursors = await Requestor.fetchCursors(Manager.collection.id).catch(
+          () => undefined
+        );
+      }
 
-            // Update the current condition of monitor to display correct data
-            const fetched_collection =
-              this.monitor.condition.fetched_collection + beatmaps.length;
-            this.monitor.setCondition({ fetched_collection });
-            this.monitor.update();
-          } while (cursor);
-        } else {
-          // Fetch all beatmaps in the collection with cursors from database
-          const fetchCollectionPromise = [] as Promise<Json>[];
-          for (const cursor of cursors) {
-            fetchCollectionPromise.push(this._fetchCollection(true, cursor));
+      // If no cursors was fetched or the database is down/errored
+      if (cursors) {
+        if (!cursors.length) {
+          cursors = [0]; // Temporary fix for empty array, tbh I am just lazy to fix it
+        }
+        // Fetch all beatmaps in the collection with cursors from database
+        const fetchCollectionPromise = [] as Promise<Json>[];
+        for (const cursor of cursors) {
+          const fetchCollectionTask = Requestor.fetchCollection(
+            Manager.collection.id,
+            {
+              v2: true,
+              cursor,
+            }
+          );
+
+          fetchCollectionPromise.push(fetchCollectionTask);
+        }
+        const collectionData = await Promise.all(fetchCollectionPromise);
+
+        for (const data of collectionData) {
+          const und = Util.checkUndefined(data, ["beatmaps"]);
+          if (und) {
+            throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
           }
 
-          const dataArray = await Promise.all(fetchCollectionPromise);
-          for (const data of dataArray) {
-            const und = Util.checkUndefined(data, ["beatmaps"]);
-            if (und) {
-              throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
-            }
+          const { beatmaps } = data as v2ResCollectionType;
+          Manager.collection.resolveFullData(beatmaps);
 
-            const { beatmaps } = data as v2ResCollectionType;
-            Manager.collection.resolveFullData(beatmaps);
+          fetchedCollectionCount += beatmaps.length;
 
-            // Update the current condition of monitor to display correct data
-            const fetched_collection =
-              this.monitor.condition.fetched_collection + beatmaps.length;
-            this.monitor.setCondition({ fetched_collection });
-            this.monitor.update();
-          }
+          this.monitor.setCondition({
+            fetched_collection: fetchedCollectionCount,
+          });
+          this.monitor.update();
         }
-      } catch (e) {
-        throw new OcdlError("REQUEST_DATA_FAILED", e);
+      } else {
+        // Loop through every beatmaps in the collection
+        let cursor: number | undefined = undefined;
+        do {
+          const v2ResponseData = await Requestor.fetchCollection(
+            Manager.collection.id,
+            { v2: true, cursor }
+          );
+
+          const und = Util.checkUndefined(v2ResponseData, [
+            "nextPageCursor",
+            "beatmaps",
+          ]);
+          if (und) {
+            throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+          }
+
+          const { nextPageCursor, beatmaps } =
+            v2ResponseData as v2ResCollectionType;
+          cursor = nextPageCursor;
+          Manager.collection.resolveFullData(beatmaps);
+
+          // Update the current condition of monitor to display correct data
+          fetchedCollectionCount += beatmaps.length;
+          this.monitor.setCondition({
+            fetched_collection: fetchedCollectionCount,
+          });
+          this.monitor.update();
+        } while (cursor);
       }
     }
 
     // Task 4
-    this.monitor.next();
-    this.monitor.update();
+    this.monitor.nextTask();
 
     // Create folder for downloading beatmaps and generating osdb file
     try {
@@ -169,17 +193,18 @@ export default class Worker extends Manager {
         Manager.config.directory,
         Manager.collection.getReplacedName()
       );
-      if (!existsSync(path)) mkdirSync(path);
+      if (!existsSync(path)) {
+        mkdirSync(path);
+      }
     } catch (e) {
       throw new OcdlError("FOLDER_GENERATION_FAILED", e);
     }
 
     // Task 5
-    this.monitor.next();
-    this.monitor.update();
+    this.monitor.nextTask();
 
     // Generate .osdb file
-    if (Manager.config.mode === 2) {
+    if (Manager.config.mode !== 1) {
       try {
         const generator = new OsdbGenerator();
         generator.writeOsdb();
@@ -188,107 +213,83 @@ export default class Worker extends Manager {
       }
     }
 
-    // Task 6
-    this.monitor.next();
-    this.monitor.update();
+    if (Manager.config.mode === 3) {
+      return this.monitor.freeze(Msg.GENERATED_OSDB, {
+        name: Manager.collection.name,
+      });
+    }
 
-    // Set a 3 seconds delay before the download start
-    // This is added for people who only want to generate osdb file
-    console.log(Msg.PRE_DOWNLOAD);
-    await new Promise<void>((r) => setTimeout(r, 3e3));
+    // Task 6
+    this.monitor.nextTask();
 
     try {
       const downloadManager = new DownloadManager();
       // Listen to current download state and log into console
-      downloadManager.on("downloading", (beatMapSet) => {
-        this.monitor.appendLog(
-          chalk.gray`Downloading [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
-        );
-        this.monitor.update();
-      });
+      downloadManager
+        .on("downloading", (beatMapSet) => {
+          this.monitor.appendDownloadLog(
+            Msg.DOWNLOADING_FILE,
+            {
+              id: beatMapSet.id.toString(),
+              name: beatMapSet.title ?? "",
+            },
+            DisplayTextColor.SECONDARY
+          );
+          this.monitor.update();
+        })
+        .on("retrying", (beatMapSet) => {
+          this.monitor.appendDownloadLog(
+            Msg.RETRYING_DOWNLOAD,
+            {
+              id: beatMapSet.id.toString(),
+              name: beatMapSet.title ?? "",
+            },
+            DisplayTextColor.SECONDARY
+          );
+          this.monitor.update();
+        })
+        .on("downloaded", (beatMapSet) => {
+          const downloaded = downloadManager.getDownloadedBeatMapSetSize();
+          this.monitor.setCondition({
+            downloaded_beatmapset: downloaded,
+          });
+          this.monitor.appendDownloadLog(
+            Msg.DOWNLOADED_FILE,
+            {
+              id: beatMapSet.id.toString(),
+              name: beatMapSet.title ?? "",
+            },
+            DisplayTextColor.SUCCESS
+          );
+          this.monitor.update();
+        })
+        .on("end", (beatMapSets) => {
+          // For beatmap sets which were failed to download, generate a missing log to notice the user
+          for (let i = 0; i < beatMapSets.length; i++) {
+            Logger.generateMissingLog(
+              Manager.collection.name,
+              beatMapSets[i].id.toString()
+            );
+          }
+          this.monitor.freeze(Msg.DOWNLOAD_COMPLETED);
+        })
+        .on("error", (beatMapSet, e) => {
+          this.monitor.appendDownloadLog(
+            Msg.DOWNLOAD_FILE_FAILED,
+            {
+              id: beatMapSet.id.toString(),
+              name: beatMapSet.title ?? "",
+              error: String(e),
+            },
+            DisplayTextColor.DANGER
+          );
 
-      downloadManager.on("retrying", (beatMapSet) => {
-        this.monitor.appendLog(
-          chalk.yellow`Retrying [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
-        );
-        this.monitor.update();
-      });
-
-      downloadManager.on("downloaded", (beatMapSet) => {
-        const downloaded = this.monitor.condition.downloaded_beatmapset;
-        this.monitor.setCondition({
-          downloaded_beatmapset: downloaded + 1,
+          this.monitor.update();
         });
-        this.monitor.appendLog(
-          chalk.green`Downloaded [${beatMapSet.id}] ${beatMapSet.title ?? ""}`
-        );
-        this.monitor.update();
-      });
 
-      downloadManager.on("error", (beatMapSet, e) => {
-        this.monitor.appendLog(
-          chalk.red`Failed when downloading [${beatMapSet.id}] ${
-            beatMapSet.title ?? ""
-          }, due to error: ${e}`
-        );
-        this.monitor.update();
-      });
-
-      const notDownloadedBeatMapSet = await downloadManager.bulk_download();
-      // For beatmap sets which were failed to download, generate a missing log to notice the user
-      for (let i = 0; i < notDownloadedBeatMapSet.length; i++) {
-        Logger.generateMissingLog(
-          Manager.collection.name,
-          notDownloadedBeatMapSet[i].id.toString()
-        );
-      }
+      await downloadManager.bulkDownload();
     } catch (e) {
       throw new OcdlError("MANAGE_DOWNLOAD_FAILED", e);
     }
-
-    this.monitor.freeze("\nDownload finished");
-  }
-
-  private async _fetchCollection(v2 = false, cursor = 0): Promise<Json> {
-    // Use different endpoint for different version of api request
-    const url =
-      Constant.OsuCollectorApiUrl +
-      Manager.collection.id.toString() +
-      (v2 ? "/beatmapsV2" : "");
-
-    const query: Record<string, number> = // Query is needed for V2 collection
-      v2
-        ? {
-            perPage: 100,
-            cursor, // Cursor which point to the next page
-          }
-        : {};
-
-    const data = await request(url, { method: "GET", query })
-      .then(async (res) => {
-        if (res.statusCode !== 200) throw `Status code: ${res.statusCode}`;
-        return (await res.body.json()) as Json;
-      })
-      .catch((e: unknown) => new OcdlError("REQUEST_DATA_FAILED", e));
-    if (data instanceof OcdlError) throw data;
-
-    return data;
-  }
-
-  private async _fetchCursors(): Promise<Cursors> {
-    const url =
-      Constant.OsuCollectorDbApiUrl +
-      "collections/?id=" +
-      Manager.collection.id.toString();
-
-    const data = await request(url, { method: "GET", headersTimeout: 5e3 }) // Set 5 Seconds Timeout
-      .then(async (res) => {
-        if (res.statusCode !== 200) throw `Status code: ${res.statusCode}`;
-        return (await res.body.json()) as Cursors;
-      })
-      .catch((e: unknown) => new OcdlError("REQUEST_DATA_FAILED", e));
-
-    if (data instanceof OcdlError) throw data;
-    return data;
   }
 }

@@ -46,7 +46,7 @@ export default class Logger {
         // If it does not, create the file and write the beatmap URL to it
         writeFileSync(
           path,
-          `=== Missing Beatmap Sets ===\n[ Try to download manually ]\n${url}\n`
+          `=== Missing Beatmap Sets ===\n[ Try to download them manually ]\n${url}\n`
         );
       } else {
         appendFileSync(path, `${url}\n`);

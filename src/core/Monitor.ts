@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { log, clear } from "console";
+import { clear, log } from "console";
 import { Constant } from "../struct/Constant";
 import { Message, Msg } from "../struct/Message";
 import OcdlError from "../struct/OcdlError";
@@ -17,9 +17,15 @@ interface Condition {
   download_log: string[];
 }
 
+export enum DisplayTextColor {
+  PRIMARY = "yellowBright",
+  SECONDARY = "grey",
+  DANGER = "red",
+  SUCCESS = "green",
+  WHITE = "white",
+}
+
 export default class Monitor extends Manager {
-  // Current version of the application
-  readonly version: string;
   // Current progress of the application
   private progress = 0;
   // Console prompt for user input and freezing purpose
@@ -27,7 +33,7 @@ export default class Monitor extends Manager {
   // Object containing functions for each task
   private readonly task: Record<number, () => void>;
 
-  readonly condition: Condition;
+  private readonly condition: Condition;
 
   constructor() {
     super();
@@ -41,10 +47,8 @@ export default class Monitor extends Manager {
       download_log: [],
     };
 
-    this.version = LIB_VERSION;
-
     // Set terminal title according to it's version
-    Util.setTerminalTitle(`osu-collector-dl v${this.version}`);
+    Util.setTerminalTitle(`osu-collector-dl v${LIB_VERSION}`);
 
     this.task = {
       0: () => undefined, // Empty function
@@ -57,85 +61,126 @@ export default class Monitor extends Manager {
     };
   }
 
-  update(): Monitor {
+  // Update display with current progress
+  update(): void {
     clear();
+
     // If new version is available, display a message that notice the user
     if (this.condition.new_version) {
-      log(
-        chalk.yellow(
-          new Message(Msg.NEW_VERSION, {
-            version: this.condition.new_version,
-            url: Constant.GithubReleaseUrl + this.condition.new_version,
-          }).toString()
-        )
-      );
+      this.notifyNewVersion();
     }
 
     // Display the collection id and name, as well as the current working mode
-    log(
-      chalk.green(
-        `Collection: ${Manager.collection.id} - ${Manager.collection.name} | Mode: ${Manager.config.mode}`
-      )
-    );
+    this.displayHeader();
 
     // Display progress according to current task
     try {
       this.task[this.progress]();
     } catch (e) {
-      throw new OcdlError("MESSAGE_GENERATOR_FAILED", e);
+      throw new OcdlError("MESSAGE_GENERATION_FAILED", e);
     }
-
-    return this;
   }
 
-  freeze(message: string, isErrored = false): void {
+  // Freeze the console
+  freeze(
+    message: Msg,
+    variable: Record<string, string> | undefined = {},
+    isErrored = false
+  ): void {
     // If errored, the message is in red, otherwise green
-    log(isErrored ? chalk.red(message) : chalk.greenBright(message));
+    this.displayMessage(
+      message,
+      variable,
+      isErrored ? DisplayTextColor.DANGER : DisplayTextColor.SUCCESS
+    );
 
-    // Freeze the console with prompt
-    this.prompt(`Press "Enter" to ${isErrored ? "exit" : "continue"}.`);
+    this.awaitInput(Msg.FREEZE, { action: isErrored ? "exit" : "continue" });
 
     // End the whole process if it is errored
-    if (isErrored) process.exit(1);
+    if (isErrored) {
+      process.exit(1);
+    }
   }
 
-  // Stop the console and wait for user input
-  awaitInput(message: string, value = ""): string {
-    return this.prompt(message + " ", value);
+  displayMessage(
+    message: Msg,
+    variable: Record<string, string> | undefined = {},
+    color: DisplayTextColor = DisplayTextColor.WHITE
+  ) {
+    const messageComponent = new Message(message, variable);
+
+    log(chalk`{${color} ${messageComponent.toString()}}`);
   }
 
-  // To update the progress correspond to the current task
-  next(): void {
+  awaitInput(
+    message: Msg,
+    variable: Record<string, string> | undefined = {},
+    defaultValue = ""
+  ): string {
+    const messageComponent = new Message(message, variable);
+
+    return this.prompt(messageComponent + " ", defaultValue);
+  }
+
+  // When called, the monitor will proceed to the next task
+  // and will display different interface for different task
+  nextTask(): void {
     this.progress++;
+    this.update();
   }
 
   setCondition(new_condition: Partial<Condition>): void {
     Object.assign(this.condition, new_condition);
   }
 
-  appendLog(log: string): void {
-    this.condition.download_log.splice(0, 0, log);
+  appendDownloadLog(
+    message: Msg,
+    variable: Record<string, string> | undefined = {},
+    color: DisplayTextColor = DisplayTextColor.WHITE
+  ): void {
+    const messageComponent = new Message(message, variable);
+    const log = chalk`{${color} ${messageComponent.toString()}}`;
+
+    this.condition.download_log.unshift(log);
     this.condition.download_log.splice(Manager.config.logSize, 1);
   }
 
-  async checkNewVersion() {
-    // Check for new version
-    const newVersion = await Util.checkNewVersion(this.version);
-    if (!newVersion) return;
-    this.condition.new_version = newVersion;
+  private displayHeader(): void {
+    this.displayMessage(
+      Msg.HEADER,
+      {
+        id: Manager.collection.id.toString(),
+        name: Manager.collection.name,
+        mode: Manager.config.mode.toString(),
+      },
+      DisplayTextColor.PRIMARY
+    );
+  }
+
+  private notifyNewVersion(): void {
+    this.displayMessage(
+      Msg.NEW_VERSION,
+      {
+        version: this.condition.new_version,
+        url: Constant.GithubReleaseUrl + this.condition.new_version,
+      },
+      DisplayTextColor.SECONDARY
+    );
   }
 
   // Task 1
   private p_input_id(): void {
     if (this.condition.retry_input) {
-      log(chalk.red(new Message(Msg.INPUT_ID_ERR).toString()));
+      this.displayMessage(Msg.INPUT_ID_ERR, {}, DisplayTextColor.DANGER);
     }
   }
 
   // Task 2
   private p_input_mode(): void {
+    this.displayMessage(Msg.INPUT_MODE_DESCRIPTION, {});
+
     if (this.condition.retry_mode) {
-      log(chalk.red(new Message(Msg.INPUT_MODE_ERR).toString()));
+      this.displayMessage(Msg.INPUT_MODE_ERR, {}, DisplayTextColor.DANGER);
     }
   }
 
@@ -143,45 +188,35 @@ export default class Monitor extends Manager {
   private p_fetch_collection(): void {
     const beatmaps_length = Manager.collection.beatMapCount.toString();
 
-    log(
-      new Message(Msg.FETCH_DATA, {
-        amount: this.condition.fetched_collection.toString(),
-        total: beatmaps_length,
-      }).toString()
-    );
+    this.displayMessage(Msg.FETCH_DATA, {
+      amount: this.condition.fetched_collection.toString(),
+      total: beatmaps_length,
+    });
   }
 
   // Task 4
   private p_create_folder(): void {
-    log(
-      new Message(Msg.CREATE_FOLDER, {
-        name: Manager.collection.name,
-      }).toString()
-    );
+    this.displayMessage(Msg.CREATE_FOLDER, {
+      name: Manager.collection.name,
+    });
   }
 
   // Task 5
   private p_generate_osdb(): void {
-    log(
-      new Message(Msg.GENERATE_OSDB, {
-        name: Manager.collection.name,
-      }).toString()
-    );
+    this.displayMessage(Msg.GENERATE_OSDB, {
+      name: Manager.collection.name,
+    });
   }
 
   // Task 6
   private p_download(): void {
-    log(
-      new Message(Msg.DOWNLOAD_FILE, {
-        amount: this.condition.downloaded_beatmapset.toString(),
-        total: Manager.collection.beatMapSets.size.toString(),
-      }).toString()
-    );
+    this.displayMessage(Msg.DOWNLOAD_FILES, {
+      amount: this.condition.downloaded_beatmapset.toString(),
+      total: Manager.collection.beatMapSets.size.toString(),
+    });
 
-    log(
-      new Message(Msg.DOWNLOAD_LOG, {
-        log: this.condition.download_log.join("\n"),
-      }).toString()
-    );
+    this.displayMessage(Msg.DOWNLOAD_LOG, {
+      log: this.condition.download_log.join("\n"),
+    });
   }
 }
