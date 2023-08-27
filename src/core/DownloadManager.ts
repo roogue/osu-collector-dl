@@ -73,7 +73,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
   // Downloads a single beatmap file
   private async _downloadFile(
     beatMapSet: BeatMapSet,
-    options: { retries: number; alt?: boolean } = { retries: 3 } // Whether or not use the alternative mirror url
+    options: { retries: number; alt: boolean } = { retries: 3, alt: false } // Whether or not use the alternative mirror url
   ): Promise<void> {
     // Request the download
     try {
@@ -84,7 +84,9 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
         this.path = process.cwd();
       }
 
-      const response = await Requestor.fetchDownloadCollection(beatMapSet.id);
+      const response = await Requestor.fetchDownloadCollection(beatMapSet.id, {
+        alternative: options.alt,
+      });
 
       const fileName = this._getFilename(response);
       const file = createWriteStream(_path.join(this.path, fileName));
