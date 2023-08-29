@@ -283,7 +283,7 @@ export default class Worker extends Manager {
           this.monitor.update();
         });
 
-      await downloadManager.bulkDownload();
+      downloadManager.bulkDownload();
     } catch (e) {
       throw new OcdlError("MANAGE_DOWNLOAD_FAILED", e);
     }

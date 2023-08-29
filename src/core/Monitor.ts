@@ -119,7 +119,7 @@ export default class Monitor extends Manager {
   ): string {
     const messageComponent = new Message(message, variable);
 
-    return this.prompt(messageComponent + " ", defaultValue);
+    return this.prompt(messageComponent.toString() + " ", defaultValue);
   }
 
   // When called, the monitor will proceed to the next task

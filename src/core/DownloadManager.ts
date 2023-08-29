@@ -53,10 +53,10 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
   }
 
   // The primary method for downloading beatmaps
-  public async bulkDownload(): Promise<void> {
+  public bulkDownload(): void {
     // Add every download task to queue
     Manager.collection.beatMapSets.forEach((beatMapSet) => {
-      this.queue.add(async () => await this._downloadFile(beatMapSet));
+      void this.queue.add(async () => await this._downloadFile(beatMapSet));
     });
 
     // Emit if the download has been done

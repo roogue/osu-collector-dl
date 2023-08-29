@@ -70,7 +70,7 @@ export class Requestor {
     const url =
       (options.alternative
         ? Constant.OsuMirrorAltApiUrl
-        : Constant.OsuMirrorApiUrl) + id;
+        : Constant.OsuMirrorApiUrl) + id.toString();
 
     const res = await fetch(url, { method: "GET" });
 
@@ -87,7 +87,8 @@ export class Requestor {
   ): Promise<Json> {
     const { v2, cursor } = options;
     // Use different endpoint for different version of api request
-    const url = Constant.OsuCollectorApiUrl + id + (v2 ? "/beatmapsV2" : "");
+    const url =
+      Constant.OsuCollectorApiUrl + id.toString() + (v2 ? "/beatmapsV2" : "");
 
     const query: FetchCollectionQuery = // Query is needed for V2 collection
       v2
