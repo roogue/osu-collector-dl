@@ -4,7 +4,7 @@ A program that automates the download of beatmap sets in Osu!Collector.
 
 ## Installation
 
-1. Download the latest release from the releases page.
+1. Download the latest release from the [releases](https://github.com/roogue/osu-collector-dl/releases) page.
 2. Extract the compressed file
 
 ## Usage
