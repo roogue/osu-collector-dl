@@ -54,6 +54,7 @@ export enum Msg {
   RETRYING_DOWNLOAD = "Retrying [{{id}}] {{name}}",
   DOWNLOADED_FILE = "Downloaded [{{id}}] {{name}}",
   DOWNLOAD_FILE_FAILED = "Failed when downloading [{{id}}] {{name}}, due to error: {{error}}",
+  RATE_LIMITED = "Download request rate is limited, cooling down for one minute...",
   DOWNLOAD_COMPLETED = "Download completed.",
 
   PROCESS_ERRORED = "An error occurred: {{error}}",

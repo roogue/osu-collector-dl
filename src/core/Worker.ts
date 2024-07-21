@@ -259,6 +259,14 @@ export default class Worker extends Manager {
           );
           this.monitor.update();
         })
+        .on("rateLimited", () => {
+          this.monitor.appendDownloadLog(
+            Msg.RATE_LIMITED,
+            {},
+            DisplayTextColor.DANGER
+          );
+          this.monitor.update();
+        })
         .on("end", (beatMapSets) => {
           // For beatmap sets which were failed to download, generate a missing log to notice the user
           for (let i = 0; i < beatMapSets.length; i++) {

@@ -5,6 +5,7 @@ export enum ErrorType {
   "RESOLVE_JSON_FAILED" = "Error occurred while resolving res body to json",
   "GENERATE_OSDB_FAILED" = "Error occurred while generating .osdb",
   "REQUEST_DATA_FAILED" = "Error occurred while requesting data",
+  "RATE_LIMITED" = "The request rate is limited.",
   "FOLDER_GENERATION_FAILED" = "Error occurred while generating folder",
   "FILE_NAME_EXTRACTION_FAILED" = "Error occurred while extracting file name",
   "MESSAGE_GENERATION_FAILED" = "Error occurred while updating monitor",

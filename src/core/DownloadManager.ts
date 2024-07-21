@@ -15,6 +15,7 @@ interface DownloadManagerEvents {
   error: (beatMapSet: BeatMapSet, e: unknown) => void;
   retrying: (beatMapSet: BeatMapSet) => void;
   downloading: (beatMapSet: BeatMapSet) => void;
+  rateLimited: () => void;
   // End is emitted along with un-downloaded beatmap
   end: (beatMapSet: BeatMapSet[]) => void;
 }
@@ -38,6 +39,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
   private queue: PQueue;
   private downloadedBeatMapSetSize = 0;
   private notDownloadedBeatMapSet: BeatMapSet[] = [];
+  private testRequest: boolean = false;
 
   constructor() {
     super();
@@ -49,6 +51,8 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
 
     this.queue = new PQueue({
       concurrency: Manager.config.parallel ? Manager.config.concurrency : 1,
+      intervalCap: Manager.config.intervalCap,
+      interval: Manager.config.interval * 1000,
     });
   }
 
@@ -62,6 +66,15 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
     // Emit if the download has been done
     this.queue.on("idle", () => {
       this.emit("end", this.notDownloadedBeatMapSet);
+    });
+
+    this.on("rateLimited", () => {
+      if (!this.queue.isPaused) {
+        this.testRequest = true;
+        this.queue.pause();
+        this.queue.concurrency = 1;
+        setTimeout(() => this.queue.start(), 60e3);
+      }
     });
     return;
   }
@@ -87,6 +100,21 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       const response = await Requestor.fetchDownloadCollection(beatMapSet.id, {
         alternative: options.alt,
       });
+
+      if (response.status === 429) {
+        this.emit("rateLimited");
+        this.queue.add(async () => await this._downloadFile(beatMapSet));
+        return;
+      } else if (response.status !== 200) {
+        throw `Status code: ${response.status}`
+      }
+
+      if (this.testRequest) {
+        this.testRequest = false;
+        this.queue.concurrency = Manager.config.parallel
+          ? Manager.config.concurrency
+          : 1;
+      }
 
       const fileName = this._getFilename(response);
       const file = createWriteStream(_path.join(this.path, fileName));

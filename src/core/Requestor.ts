@@ -74,10 +74,6 @@ export class Requestor {
 
     const res = await fetch(url, { method: "GET" });
 
-    if (!res.ok) {
-      throw `Status code: ${res.status}`;
-    }
-
     return res;
   }
 
