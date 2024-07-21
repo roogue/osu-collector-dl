@@ -10,7 +10,7 @@
     "prettier": "prettier --write \"**/*.{ts,json,yml,yaml,md}\"",
     "prebuild-ts": "node -p \"'export const LIB_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > src/version.ts",
     "build-ts": "yarn prebuild-ts && tsc -p .",
-    "build-app-win": "yarn build-ts && pkg -t node16-win-x64 -o ./build/win-x64/osu-collector-dl.exe ./dist/index.js --public",
+    "build-app-win": "yarn build-ts && pkg -t node16-win -o ./build/win-x64/osu-collector-dl.exe ./dist/index.js --public",
     "build-app-linux": "yarn build-ts && pkg -t node16-linux -o ./build/linux-arm64/osu-collector-dl ./dist/index.js --public",
     "build-app": "yarn build-app-win && yarn build-app-linux",
     "cp-build-win": "cp ./{LICENSE,README.md} ./build/win-x64/ && cp ./config.json.example ./build/win-x64/config.json",
