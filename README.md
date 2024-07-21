@@ -2,6 +2,11 @@
 
 A program that automates the download of beatmap sets in Osu!Collector.
 
+# ❗❗ WARNING ❗❗
+## The latest version of osu-collector-dl (v2.7.4) has a rate limitation issue. Please DO NOT use any download beatmap set function, as this will lead to potential IP bans as [Mentioned Here](https://github.com/roogue/osu-collector-dl/issues/18#issuecomment-2199481512).
+#
+#
+
 ## Installation
 
 1. Download the latest release from the [releases](https://github.com/roogue/osu-collector-dl/releases) page.
