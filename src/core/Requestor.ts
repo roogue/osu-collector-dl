@@ -3,6 +3,7 @@ import { Constant } from "../struct/Constant";
 import { Cursors, Json, Mode } from "../types";
 import OcdlError from "../struct/OcdlError";
 import { CollectionId } from "../struct/Collection";
+import { LIB_VERSION } from "../version";
 
 interface FetchCollectionQuery {
   perPage?: number;
@@ -72,8 +73,11 @@ export class Requestor {
         ? Constant.OsuMirrorAltApiUrl
         : Constant.OsuMirrorApiUrl) + id.toString();
 
-    const res = await fetch(url, { method: "GET" });
-
+    const fetchOptions = {
+      headers: {'User-Agent': `osu-collector-dl/v${LIB_VERSION}`},
+      method: "GET",
+    }
+    const res = await fetch(url, fetchOptions);
     return res;
   }
 
