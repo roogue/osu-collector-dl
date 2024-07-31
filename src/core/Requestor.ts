@@ -74,9 +74,9 @@ export class Requestor {
         : Constant.OsuMirrorApiUrl) + id.toString();
 
     const fetchOptions = {
-      headers: {'User-Agent': `osu-collector-dl/v${LIB_VERSION}`},
+      headers: { "User-Agent": `osu-collector-dl/v${LIB_VERSION}` },
       method: "GET",
-    }
+    };
     const res = await fetch(url, fetchOptions);
     return res;
   }

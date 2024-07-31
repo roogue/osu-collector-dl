@@ -1,6 +1,6 @@
 {
   "name": "osu-collector-dl",
-  "version": "2.7.5",
+  "version": "2.7.6",
   "main": "./dist/index.js",
   "scripts": {
     "build": "yarn run clean-folder && yarn run build-app && yarn run cp-build",
