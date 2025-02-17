@@ -2,6 +2,9 @@
 *.osz
 *.osdb
 
+#todo
+.todo
+
 # Logs
 logs
 *.log
