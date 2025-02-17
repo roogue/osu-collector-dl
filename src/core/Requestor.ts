@@ -143,4 +143,47 @@ export class Requestor {
 
     return data;
   }
+
+  static async checkRateLimitation(): Promise<number | null> {
+    const res = await request(Constant.OsuMirrorRateLimitUrl, {
+      method: "GET",
+      headers: { "User-Agent": `osu-collector-dl/v${LIB_VERSION}` },
+    });
+
+    if (!res || res.statusCode !== 200) return null;
+    const data = (await res.body.json().catch(() => null)) as Json | null;
+    if (!data) return null;
+
+    // Return remaining beatmaps that can be request to download
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+    return ((data as any).daily?.remaining?.downloads ?? null) as number | null;
+  }
+
+  static async checkNewVersion(
+    current_version: string
+  ): Promise<string | null> {
+    if (current_version === "Unknown") return null;
+
+    const res = await request(Constant.GithubReleaseApiUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": `osu-collector-dl/v${current_version}`,
+      },
+      query: {
+        per_page: 1,
+      },
+    }).catch(() => null);
+
+    if (!res || res.statusCode !== 200) return null;
+    const data = (await res.body.json().catch(() => null)) as Json[] | null;
+    if (!data) return null;
+
+    // Check version
+    const version = data[0].tag_name as string;
+    if (version === "v" + current_version) return null;
+
+    return version;
+  }
 }
