@@ -16,8 +16,10 @@ interface DownloadManagerEvents {
   retrying: (beatMapSet: BeatMapSet) => void;
   downloading: (beatMapSet: BeatMapSet) => void;
   rateLimited: () => void;
+  dailyRateLimited: (beatMapSets: BeatMapSet[]) => void;
+  blocked: () => void;
   // End is emitted along with un-downloaded beatmap
-  end: (beatMapSet: BeatMapSet[]) => void;
+  end: (beatMapSets: BeatMapSet[]) => void;
 }
 
 export declare interface DownloadManager extends Manager {
@@ -38,11 +40,14 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
   // Queue for concurrency downloads
   private queue: PQueue;
   private downloadedBeatMapSetSize = 0;
-  private notDownloadedBeatMapSet: BeatMapSet[] = [];
-  private testRequest: boolean = false;
+  private remainingDownloadsLimit: number | null;
+  private lastDownloadsLimitCheck: number | null = null;
+  private testRequest = false;
 
-  constructor() {
+  constructor(remainingDownloadsLimit: number | null) {
     super();
+
+    this.remainingDownloadsLimit = remainingDownloadsLimit;
 
     this.path = _path.join(
       Manager.config.directory,
@@ -52,7 +57,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
     this.queue = new PQueue({
       concurrency: Manager.config.parallel ? Manager.config.concurrency : 1,
       intervalCap: Manager.config.intervalCap,
-      interval: Manager.config.interval * 1000,
+      interval: 60e3, // Always one minute
     });
   }
 
@@ -60,12 +65,15 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
   public bulkDownload(): void {
     // Add every download task to queue
     Manager.collection.beatMapSets.forEach((beatMapSet) => {
-      void this.queue.add(async () => await this._downloadFile(beatMapSet));
+      void this.queue.add(async () => {
+        await this._downloadFile(beatMapSet);
+        Manager.collection.beatMapSets.delete(beatMapSet.id);
+      });
     });
 
     // Emit if the download has been done
     this.queue.on("idle", () => {
-      this.emit("end", this.notDownloadedBeatMapSet);
+      this.emit("end", this._getNotDownloadedBeatapSets());
     });
 
     this.on("rateLimited", () => {
@@ -79,15 +87,28 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
     return;
   }
 
-  getDownloadedBeatMapSetSize() {
+  public getDownloadedBeatMapSetSize() {
     return this.downloadedBeatMapSetSize;
+  }
+
+  public getRemainingDownloadsLimit() {
+    return this.remainingDownloadsLimit;
   }
 
   // Downloads a single beatmap file
   private async _downloadFile(
     beatMapSet: BeatMapSet,
     options: { retries: number; alt: boolean } = { retries: 3, alt: false } // Whether or not use the alternative mirror url
-  ): Promise<void> {
+  ): Promise<boolean> {
+    // Check if the daily rate limit hit
+    if (
+      this.remainingDownloadsLimit != null &&
+      this.remainingDownloadsLimit <= 0
+    ) {
+      this.emit("dailyRateLimited", this._getNotDownloadedBeatapSets());
+      return false;
+    }
+
     // Request the download
     try {
       this.emit("downloading", beatMapSet);
@@ -102,11 +123,32 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       });
 
       if (response.status === 429) {
+        // If user still get 429 after a test request (60 seconds wait), then check if user is daily rate limited
+        if (this.testRequest) {
+          if (
+            !this.lastDownloadsLimitCheck ||
+            Date.now() - this.lastDownloadsLimitCheck > 5e3
+          ) {
+            // 5 seconds cooldown
+            this.lastDownloadsLimitCheck = Date.now();
+            const rateLimitStatus = await Requestor.checkRateLimitation();
+            if (rateLimitStatus === 0) {
+              this.emit("dailyRateLimited", this._getNotDownloadedBeatapSets());
+            } else {
+              this.remainingDownloadsLimit = rateLimitStatus;
+            }
+          }
+        }
+
         this.emit("rateLimited");
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         this.queue.add(async () => await this._downloadFile(beatMapSet));
-        return;
+        return false;
+      } else if (response.status === 403) {
+        this.emit("blocked");
+        return false;
       } else if (response.status !== 200) {
-        throw `Status code: ${response.status}`
+        throw `Status Code: ${response.status}`;
       }
 
       if (this.testRequest) {
@@ -128,24 +170,38 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       file.end();
 
       this.downloadedBeatMapSetSize++;
+      if (this.remainingDownloadsLimit != null) this.remainingDownloadsLimit--;
       this.emit("downloaded", beatMapSet);
     } catch (e) {
-      // Retry the download with one fewer retry remaining, and use the alternative URL if this is the last retry
+      // Retry the download by pushing the map to the end of the queue, and use the alternative URL if this is the last retry
       if (options.retries) {
         this.emit("retrying", beatMapSet);
 
-        await this._downloadFile(beatMapSet, {
-          alt: options.retries === 1,
-          retries: options.retries - 1,
-        });
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.queue.add(
+          async () =>
+            await this._downloadFile(beatMapSet, {
+              alt: options.retries === 1,
+              retries: options.retries - 1,
+            })
+        );
       } else {
         // If there are no retries remaining,
         // "error" event will be emitted,
         // and the beatmap will be added to the list of failed downloads
         this.emit("error", beatMapSet, e);
-        this.notDownloadedBeatMapSet.push(beatMapSet);
       }
+
+      return false;
     }
+
+    return true;
+  }
+
+  private _getNotDownloadedBeatapSets(): BeatMapSet[] {
+    return Array.from(Manager.collection.beatMapSets).map(
+      ([, beatMapSet]) => beatMapSet
+    );
   }
 
   private _getFilename(response: Response): string {

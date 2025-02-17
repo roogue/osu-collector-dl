@@ -4,7 +4,7 @@ import OcdlError from "../struct/OcdlError";
 import { existsSync, mkdirSync } from "fs";
 import _path from "path";
 import Util from "../util";
-import Monitor, { DisplayTextColor } from "./Monitor";
+import Monitor, { DisplayTextColor, FreezeCondition } from "./Monitor";
 import Logger from "./Logger";
 import { Msg } from "../struct/Message";
 import Manager from "./Manager";
@@ -27,14 +27,31 @@ export default class Worker extends Manager {
     this.monitor.displayMessage(Msg.CHECK_INTERNET_CONNECTION);
     const onlineStatus = await Util.isOnline();
     // Stop the process if user is not connected to internet
-    if (!onlineStatus) return this.monitor.freeze(Msg.NO_CONNECTION, {}, true);
+    if (!onlineStatus)
+      return this.monitor.freeze(
+        Msg.NO_CONNECTION,
+        {},
+        FreezeCondition.ERRORED
+      );
 
     // Check for new version of this program
     this.monitor.displayMessage(Msg.CHECK_NEW_VERSION);
-    const newVersion = await Util.checkNewVersion(LIB_VERSION);
+    const newVersion = await Requestor.checkNewVersion(LIB_VERSION);
     if (newVersion) {
       this.monitor.setCondition({ new_version: newVersion });
     }
+
+    // Check daily rate limit
+    this.monitor.displayMessage(Msg.CHECK_RATE_LIMIT);
+    const rateLimitStatus = await Requestor.checkRateLimitation();
+    if (rateLimitStatus === null) {
+      this.monitor.freeze(
+        Msg.UNABLE_TO_GET_DAILY_RATE_LIMIT,
+        {},
+        FreezeCondition.WARNING
+      );
+    }
+    this.monitor.setCondition({ remaining_downloads: rateLimitStatus });
 
     let id: number | null = null;
     let mode: WorkingMode | null = null;
@@ -68,19 +85,28 @@ export default class Worker extends Manager {
       // Get the working mode from user input
       while (mode === null) {
         this.monitor.update();
+        // Check if user hit their daily download rate limit, if so, continue to only generate .osdb, if not, let user select mode.
+        if (rateLimitStatus === 0) {
+          this.monitor.freeze(
+            Msg.DAILY_RATE_LIMIT_HIT_WARN,
+            {},
+            FreezeCondition.WARNING
+          );
+          mode = 3 as WorkingMode;
+        } else {
+          const result = this.monitor.awaitInput(
+            Msg.INPUT_MODE,
+            { mode: Manager.config.mode.toString() },
+            Manager.config.mode.toString() // Use default working mode from config if the user did not insert any value
+          );
 
-        const result = this.monitor.awaitInput(
-          Msg.INPUT_MODE,
-          { mode: Manager.config.mode.toString() },
-          Manager.config.mode.toString() // Use default working mode from config if the user did not insert any value
-        );
-
-        // Validate if the user input is 1 or 2 or 3
-        if (["1", "2", "3"].includes(result)) {
-          mode = parseInt(result) as WorkingMode;
+          // Validate if the user input is 1 or 2 or 3
+          if (["1", "2", "3"].includes(result)) {
+            mode = parseInt(result) as WorkingMode;
+          }
+          // Set retry to true to display the hint if user incorrectly inserted unwanted value
+          this.monitor.setCondition({ retry_mode: true });
         }
-        // Set retry to true to display the hint if user incorrectly inserted unwanted value
-        this.monitor.setCondition({ retry_mode: true });
       }
 
       // Set the working mode after getting input from user
@@ -219,7 +245,21 @@ export default class Worker extends Manager {
     this.monitor.nextTask();
 
     try {
-      const downloadManager = new DownloadManager();
+      if (
+        rateLimitStatus !== null &&
+        rateLimitStatus < Manager.collection.beatMapCount
+      ) {
+        this.monitor.freeze(
+          Msg.TO_DOWNLOADS_EXCEED_DAILY_RATE_LIMIT,
+          {
+            collection: Manager.collection.beatMapCount.toString(),
+            limit: rateLimitStatus.toString(),
+          },
+          FreezeCondition.WARNING
+        );
+      }
+
+      const downloadManager = new DownloadManager(rateLimitStatus);
       // Listen to current download state and log into console
       downloadManager
         .on("downloading", (beatMapSet) => {
@@ -246,8 +286,11 @@ export default class Worker extends Manager {
         })
         .on("downloaded", (beatMapSet) => {
           const downloaded = downloadManager.getDownloadedBeatMapSetSize();
+          const remainingDownloadsLimit =
+            downloadManager.getRemainingDownloadsLimit();
           this.monitor.setCondition({
             downloaded_beatmapset: downloaded,
+            remaining_downloads: remainingDownloadsLimit,
           });
           this.monitor.appendDownloadLog(
             Msg.DOWNLOADED_FILE,
@@ -267,14 +310,23 @@ export default class Worker extends Manager {
           );
           this.monitor.update();
         })
-        .on("end", (beatMapSets) => {
+        .on("dailyRateLimited", (beatMapSets) => {
           // For beatmap sets which were failed to download, generate a missing log to notice the user
-          for (let i = 0; i < beatMapSets.length; i++) {
-            Logger.generateMissingLog(
-              Manager.collection.name,
-              beatMapSets[i].id.toString()
-            );
-          }
+          Logger.generateMissingLog(Manager.collection.name, beatMapSets);
+          this.monitor.setCondition({ remaining_downloads: 0 });
+          this.monitor.update();
+          // Errored freeze will force user to quit the program
+          this.monitor.freeze(
+            Msg.DAILY_RATE_LIMIT_HIT,
+            {},
+            FreezeCondition.ERRORED
+          );
+        })
+        .on("blocked", () => {
+          this.monitor.freeze(Msg.REQUEST_BLOCKED, {}, FreezeCondition.ERRORED);
+        })
+        .on("end", (beatMapSets) => {
+          Logger.generateMissingLog(Manager.collection.name, beatMapSets);
           this.monitor.freeze(Msg.DOWNLOAD_COMPLETED);
         })
         .on("error", (beatMapSet, e) => {
