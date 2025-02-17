@@ -1,6 +1,7 @@
 import type OcdlError from "../struct/OcdlError";
 import { existsSync, writeFileSync, appendFileSync } from "fs";
 import _path from "path";
+import { BeatMapSet } from "../struct/BeatMapSet";
 
 // A utility class for logging errors and missing beatmaps
 export default class Logger {
@@ -34,23 +35,27 @@ export default class Logger {
   }
 
   // Generates a log file for missing beatmaps
-  static generateMissingLog(folder: string, id: string): boolean {
-    // Construct the path to the missing beatmaps log file in the given folder
-    const path = _path.join(folder, Logger.missingLogPath);
-    // Construct the URL for the missing beatmap
-    const url = `https://osu.ppy.sh/beatmapsets/${id}`;
-
+  static generateMissingLog(
+    folder: string,
+    beatMapSets: BeatMapSet[]
+  ): boolean {
     try {
-      // Check if the missing beatmaps log file exists
-      if (!existsSync(path)) {
-        // If it does not, create the file and write the beatmap URL to it
-        writeFileSync(
-          path,
-          `=== Missing Beatmap Sets ===\n[ Try to download them manually ]\n${url}\n`
-        );
-      } else {
-        appendFileSync(path, `${url}\n`);
+      // Construct the path to the missing beatmaps log file in the given folder
+      const path = _path.join(folder, Logger.missingLogPath);
+
+      let urlsString = "";
+      for (const beatMapSet of beatMapSets) {
+        // Construct the URL for the missing beatmap
+        const url = `https://osu.ppy.sh/beatmapsets/${beatMapSet.id}\n`;
+        urlsString += url;
       }
+
+      // If it does not, create the file and write the beatmap URL to it
+      writeFileSync(
+        path,
+        `=== Missing Beatmap Sets ===\n[ Try to download them manually ]\n${urlsString}`
+      );
+
       return true;
     } catch (error) {
       console.error(error);
