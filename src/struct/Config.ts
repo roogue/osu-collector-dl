@@ -12,8 +12,6 @@ export default class Config {
   concurrency: number;
   // The number of URLs that can be at most downladed within the interval
   intervalCap: number;
-  // The interval that limits the interval cap
-  interval: number;
   // The directory to save beatmaps
   directory: string;
   // The mode of operation
@@ -42,21 +40,28 @@ export default class Config {
 
     // Set default values for properties if not provided in 'config' object
     this.logSize = !isNaN(Number(config.logSize)) ? Number(config.logSize) : 15;
+    if (!Util.checkRange(this.logSize, 0, Infinity)) {
+      this.logSize = 15;
+    }
+
     this.parallel = Util.isBoolean(config.parallel)
       ? (config.parallel as boolean)
       : true;
+
     this.concurrency = !isNaN(Number(config.concurrency))
       ? Number(config.concurrency)
       : 3;
-    if (this.concurrency > 10) {
-      this.concurrency = 10;
+    if (!Util.checkRange(this.concurrency, 0, 10)) {
+      this.concurrency = 5;
     }
+
     this.intervalCap = !isNaN(Number(config.intervalCap))
       ? Number(config.intervalCap)
       : 50;
-    this.interval = !isNaN(Number(config.interval))
-      ? Number(config.interval)
-      : 60;
+    if (!Util.checkRange(this.intervalCap, 0, 120)) {
+      this.intervalCap = 50;
+    }
+
     this.directory = this._getPath(config.directory);
     this.mode = this._getMode(config.mode);
   }
@@ -70,7 +75,6 @@ export default class Config {
           parallel: true,
           concurrency: 5,
           intervalCap: 50,
-          interval: 60,
           logSize: 15,
           directory: "",
           mode: 1,
