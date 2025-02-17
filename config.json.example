@@ -2,7 +2,6 @@
   "parallel": true,
   "concurrency": 5,
   "intervalCap": 50,
-  "interval": 60,
   "logSize": 15,
   "directory": "",
   "mode": 1
