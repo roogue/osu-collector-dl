@@ -35,6 +35,15 @@ export enum Msg {
   CHECK_NEW_VERSION = "Checking for new version...",
   NEW_VERSION = "New version ({{version}}) is available! Download the latest version: \n{{url}}\n",
 
+  CHECK_RATE_LIMIT = "Checking for rate limitation...",
+  UNABLE_TO_GET_DAILY_RATE_LIMIT = "Warning: Unable to get daily rate limit, proceeding may cause incomplete downloads.",
+  DAILY_RATE_LIMIT_HIT = "Your daily download rate limit hit!",
+  DAILY_RATE_LIMIT_HIT_WARN = "Warning: Your daily download rate limit hit! Continue to generate .osdb only.",
+  TO_DOWNLOADS_EXCEED_DAILY_RATE_LIMIT = "Warning: The collection size exceeds the remaining downloads limit ({{collection}} > {{limit}}), proceeding may cause incomplete downloads.",
+  REMAINING_DOWNLOADS = "Remaining Downloads Available: {{amount}}",
+
+  REQUEST_BLOCKED = "The download request is blocked. Please do not proceed with the download function to avoid potential ban.",
+
   INPUT_ID = "Enter the collection ID you want to download:",
   INPUT_ID_ERR = "ID should be a number, Ex: '44' (without the quote)",
   INPUT_MODE_DESCRIPTION = "1: Download Beatmap Set only\n2: Download Beatmap Set + Generate .osdb\n3: Generate .osdb only\n",
