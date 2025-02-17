@@ -1,7 +1,4 @@
-import { request } from "undici";
-import { Constant } from "./struct/Constant";
 import dns from "dns";
-import type { Json } from "./types";
 
 export default class Util {
   static isBoolean(obj: unknown): boolean {
@@ -17,34 +14,6 @@ export default class Util {
     return !!(await dns.promises.resolve("google.com").catch(() => false));
   }
 
-  static async checkNewVersion(
-    current_version: string
-  ): Promise<string | null> {
-    if (current_version === "Unknown") return null;
-
-    const res = await request(Constant.GithubReleaseApiUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": `osu-collector-dl/v${current_version}`,
-      },
-      query: {
-        per_page: 1,
-      },
-    }).catch(() => null);
-
-    if (!res || res.statusCode !== 200) return null;
-    const data = (await res.body.json().catch(() => null)) as Json[] | null;
-    if (!data) return null;
-
-    // Check version
-    const version = data[0].tag_name as string;
-    if (version === "v" + current_version) return null;
-
-    return version;
-  }
-
   static checkUndefined(
     obj: Record<string, unknown>,
     fields: string[]
@@ -55,6 +24,10 @@ export default class Util {
       }
     }
     return null;
+  }
+
+  static checkRange(number: number, start: number, end: number): boolean {
+    return !(number < start || number > end);
   }
 
   static setTerminalTitle(title: string) {
