@@ -13,6 +13,7 @@ interface Condition {
   retry_input: boolean;
   retry_mode: boolean;
   fetched_collection: number;
+  remaining_downloads: number | null; // Null happends when api wasn't requested successfully
   downloaded_beatmapset: number;
   download_log: string[];
 }
@@ -23,6 +24,12 @@ export enum DisplayTextColor {
   DANGER = "red",
   SUCCESS = "green",
   WHITE = "white",
+}
+
+export enum FreezeCondition {
+  NORMAL,
+  WARNING,
+  ERRORED,
 }
 
 export default class Monitor extends Manager {
@@ -44,6 +51,7 @@ export default class Monitor extends Manager {
       retry_mode: false,
       fetched_collection: 0,
       downloaded_beatmapset: 0,
+      remaining_downloads: 0,
       download_log: [],
     };
 
@@ -85,19 +93,30 @@ export default class Monitor extends Manager {
   freeze(
     message: Msg,
     variable: Record<string, string> | undefined = {},
-    isErrored = false
+    freezeCondition: FreezeCondition = FreezeCondition.NORMAL
   ): void {
-    // If errored, the message is in red, otherwise green
-    this.displayMessage(
-      message,
-      variable,
-      isErrored ? DisplayTextColor.DANGER : DisplayTextColor.SUCCESS
-    );
+    let messageColor: DisplayTextColor;
+    switch (freezeCondition) {
+      case FreezeCondition.NORMAL:
+        messageColor = DisplayTextColor.SUCCESS;
+        break;
+      case FreezeCondition.WARNING:
+        messageColor = DisplayTextColor.PRIMARY;
+        break;
+      case FreezeCondition.ERRORED:
+        messageColor = DisplayTextColor.DANGER;
+        break;
+    }
 
-    this.awaitInput(Msg.FREEZE, { action: isErrored ? "exit" : "continue" });
+    this.displayMessage(message, variable, messageColor);
+
+    // Display exit only if freeze condition is errored.
+    this.awaitInput(Msg.FREEZE, {
+      action: freezeCondition == FreezeCondition.ERRORED ? "exit" : "continue",
+    });
 
     // End the whole process if it is errored
-    if (isErrored) {
+    if (freezeCondition == FreezeCondition.ERRORED) {
       process.exit(1);
     }
   }
@@ -177,7 +196,9 @@ export default class Monitor extends Manager {
 
   // Task 2
   private p_input_mode(): void {
-    this.displayMessage(Msg.INPUT_MODE_DESCRIPTION, {});
+    if (this.condition.remaining_downloads !== 0) {
+      this.displayMessage(Msg.INPUT_MODE_DESCRIPTION);
+    }
 
     if (this.condition.retry_mode) {
       this.displayMessage(Msg.INPUT_MODE_ERR, {}, DisplayTextColor.DANGER);
@@ -210,9 +231,13 @@ export default class Monitor extends Manager {
 
   // Task 6
   private p_download(): void {
+    this.displayMessage(Msg.REMAINING_DOWNLOADS, {
+      amount: this.condition.remaining_downloads?.toString() ?? "Unknown",
+    });
+
     this.displayMessage(Msg.DOWNLOAD_FILES, {
       amount: this.condition.downloaded_beatmapset.toString(),
-      total: Manager.collection.beatMapSets.size.toString(),
+      total: Manager.collection.beatMapCount.toString(),
     });
 
     this.displayMessage(Msg.DOWNLOAD_LOG, {
