@@ -11,10 +11,10 @@ export default class OsdbGenerator extends Manager {
 
   constructor() {
     super();
-    this.fileName = Manager.collection.getReplacedName() + ".osdb";
+    this.fileName = Manager.collection.getCollectionName() + ".osdb";
     this.filePath = _path.join(
       Manager.config.directory,
-      Manager.collection.getReplacedName(), // Folder name
+      Manager.collection.getCollectionFolderName(), // Folder name
       this.fileName // File name
     );
     // Create the file

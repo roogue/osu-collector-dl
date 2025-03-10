@@ -12,14 +12,15 @@ export type CollectionId = number;
 
 export class Collection {
   beatMapSets: Map<BeatMapSetId, BeatMapSet> = new Map();
+  beatMapSetCount = 0;
   beatMapCount = 0;
   id: CollectionId = 0;
   name = "Unknown";
   uploader: {
     username: string;
   } = {
-    username: "Unknown",
-  };
+      username: "Unknown",
+    };
 
   // Populates the Collection instance with data from the given jsonData object
   resolveData(jsonData: Json = {}) {
@@ -41,12 +42,19 @@ export class Collection {
     this.name = name;
     this.uploader = uploader;
     this.beatMapSets = this._resolveBeatMapSets(beatmapsets);
+    this.beatMapSetCount = this.beatMapSets.size;
     this.beatMapCount = this._getBeatMapCount(beatmapsets);
   }
 
   // Returns a sanitized version of the Collection's name with any forbidden characters replaced
-  getReplacedName(): string {
+  getCollectionName(): string {
     return Util.replaceForbiddenChars(this.name);
+  }
+
+  // Adds collection id in front to prevent unintentional overrides of folder with same name
+  getCollectionFolderName(): string {
+    const collectionName = this.getCollectionName();
+    return this.id + " - " + collectionName; // Folder name example: 44 - speed practice
   }
 
   // Populates the beatMapSet and beatMap instances within the Collection with data from the given data array
