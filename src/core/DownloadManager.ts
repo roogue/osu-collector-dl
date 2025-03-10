@@ -17,8 +17,8 @@ interface DownloadManagerEvents {
   downloading: (beatMapSet: BeatMapSet) => void;
   rateLimited: () => void;
   dailyRateLimited: (beatMapSets: BeatMapSet[]) => void;
-  blocked: () => void;
-  unavailable: () => void;
+  blocked: (beatMapSets: BeatMapSet[]) => void;
+  unavailable: (beatMapSets: BeatMapSet[]) => void;
   // End is emitted along with un-downloaded beatmap
   end: (beatMapSets: BeatMapSet[]) => void;
 }
@@ -52,7 +52,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
 
     this.path = _path.join(
       Manager.config.directory,
-      Manager.collection.getReplacedName()
+      Manager.collection.getCollectionFolderName()
     );
 
     this.queue = new PQueue({
@@ -146,10 +146,10 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
         this.queue.add(async () => await this._downloadFile(beatMapSet));
         return false;
       } else if (response.status === 403) {
-        this.emit("blocked");
+        this.emit("blocked", this._getNotDownloadedBeatapSets());
         return false;
       } else if (response.status === 451) {
-        this.emit("unavailable");
+        this.emit("unavailable", this._getNotDownloadedBeatapSets());
         return false;
       } else if (response.status !== 200) {
         throw `Status Code: ${response.status}`;
@@ -192,7 +192,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       } else {
         // If there are no retries remaining,
         // "error" event will be emitted,
-        // and the beatmap will be added to the list of failed downloads
+        Manager.collection.beatMapSets.set(beatMapSet.id, beatMapSet);
         this.emit("error", beatMapSet, e);
       }
 

@@ -35,6 +35,7 @@ export default class Logger {
   }
 
   // Generates a log file for missing beatmaps
+  // Note: Only call this function once per download, as it will overrides the previous log
   static generateMissingLog(
     folder: string,
     beatMapSets: BeatMapSet[]
@@ -50,7 +51,7 @@ export default class Logger {
         urlsString += url;
       }
 
-      // If it does not, create the file and write the beatmap URL to it
+      // Create file and write urls into it.
       writeFileSync(
         path,
         `=== Missing Beatmap Sets ===\n[ Try to download them manually ]\n${urlsString}`
