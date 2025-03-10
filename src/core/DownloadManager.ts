@@ -18,6 +18,7 @@ interface DownloadManagerEvents {
   rateLimited: () => void;
   dailyRateLimited: (beatMapSets: BeatMapSet[]) => void;
   blocked: () => void;
+  unavailable: () => void;
   // End is emitted along with un-downloaded beatmap
   end: (beatMapSets: BeatMapSet[]) => void;
 }
@@ -146,6 +147,9 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
         return false;
       } else if (response.status === 403) {
         this.emit("blocked");
+        return false;
+      } else if (response.status === 451) {
+        this.emit("unavailable");
         return false;
       } else if (response.status !== 200) {
         throw `Status Code: ${response.status}`;

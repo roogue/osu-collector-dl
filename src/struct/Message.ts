@@ -44,6 +44,8 @@ export enum Msg {
 
   REQUEST_BLOCKED = "The download request is blocked. Please do not proceed with the download function to avoid potential ban.",
 
+  RESOURCE_UNAVAILBALE = "The download request is blocked in your location for legal reasons, unable to download collection.",
+
   INPUT_ID = "Enter the collection ID you want to download:",
   INPUT_ID_ERR = "ID should be a number, Ex: '44' (without the quote)",
   INPUT_MODE_DESCRIPTION = "1: Download Beatmap Set only\n2: Download Beatmap Set + Generate .osdb\n3: Generate .osdb only\n",

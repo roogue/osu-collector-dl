@@ -325,6 +325,9 @@ export default class Worker extends Manager {
         .on("blocked", () => {
           this.monitor.freeze(Msg.REQUEST_BLOCKED, {}, FreezeCondition.ERRORED);
         })
+        .on("unavailable", () => {
+          this.monitor.freeze(Msg.RESOURCE_UNAVAILBALE, {}, FreezeCondition.ERRORED);
+        })
         .on("end", (beatMapSets) => {
           Logger.generateMissingLog(Manager.collection.name, beatMapSets);
           this.monitor.freeze(Msg.DOWNLOAD_COMPLETED);
