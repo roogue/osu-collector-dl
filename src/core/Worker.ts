@@ -312,7 +312,10 @@ export default class Worker extends Manager {
         })
         .on("dailyRateLimited", (beatMapSets) => {
           // For beatmap sets which were failed to download, generate a missing log to notice the user
-          Logger.generateMissingLog(Manager.collection.getCollectionFolderName(), beatMapSets);
+          Logger.generateMissingLog(
+            Manager.collection.getCollectionFolderName(),
+            beatMapSets
+          );
           this.monitor.setCondition({ remaining_downloads: 0 });
           this.monitor.update();
           // Errored freeze will force user to quit the program
@@ -323,15 +326,28 @@ export default class Worker extends Manager {
           );
         })
         .on("blocked", (beatMapSets) => {
-          Logger.generateMissingLog(Manager.collection.getCollectionFolderName(), beatMapSets);
+          Logger.generateMissingLog(
+            Manager.collection.getCollectionFolderName(),
+            beatMapSets
+          );
           this.monitor.freeze(Msg.REQUEST_BLOCKED, {}, FreezeCondition.ERRORED);
         })
         .on("unavailable", (beatMapSets) => {
-          Logger.generateMissingLog(Manager.collection.getCollectionFolderName(), beatMapSets);
-          this.monitor.freeze(Msg.RESOURCE_UNAVAILBALE, {}, FreezeCondition.ERRORED);
+          Logger.generateMissingLog(
+            Manager.collection.getCollectionFolderName(),
+            beatMapSets
+          );
+          this.monitor.freeze(
+            Msg.RESOURCE_UNAVAILBALE,
+            {},
+            FreezeCondition.ERRORED
+          );
         })
         .on("end", (beatMapSets) => {
-          Logger.generateMissingLog(Manager.collection.getCollectionFolderName(), beatMapSets);
+          Logger.generateMissingLog(
+            Manager.collection.getCollectionFolderName(),
+            beatMapSets
+          );
           this.monitor.freeze(Msg.DOWNLOAD_COMPLETED);
         })
         .on("error", (beatMapSet, e) => {

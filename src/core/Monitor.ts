@@ -237,7 +237,7 @@ export default class Monitor extends Manager {
 
     this.displayMessage(Msg.DOWNLOAD_FILES, {
       amount: this.condition.downloaded_beatmapset.toString(),
-      total: Manager.collection.beatMapSetCount.toString()
+      total: Manager.collection.beatMapSetCount.toString(),
     });
 
     this.displayMessage(Msg.DOWNLOAD_LOG, {

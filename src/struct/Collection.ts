@@ -19,8 +19,8 @@ export class Collection {
   uploader: {
     username: string;
   } = {
-      username: "Unknown",
-    };
+    username: "Unknown",
+  };
 
   // Populates the Collection instance with data from the given jsonData object
   resolveData(jsonData: Json = {}) {
@@ -54,7 +54,7 @@ export class Collection {
   // Adds collection id in front to prevent unintentional overrides of folder with same name
   getCollectionFolderName(): string {
     const collectionName = this.getCollectionName();
-    return this.id + " - " + collectionName; // Folder name example: 44 - speed practice
+    return this.id.toString() + " - " + collectionName; // Folder name example: 44 - speed practice
   }
 
   // Populates the beatMapSet and beatMap instances within the Collection with data from the given data array
