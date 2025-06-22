@@ -8,7 +8,7 @@ import Monitor, { DisplayTextColor, FreezeCondition } from "./Monitor";
 import Logger from "./Logger";
 import { Msg } from "../struct/Message";
 import Manager from "./Manager";
-import type { Cursors, Json, WorkingMode } from "../types";
+import type { WorkingMode } from "../types";
 import { Requestor, v2ResCollectionType } from "./Requestor";
 import { LIB_VERSION } from "../version";
 
@@ -130,80 +130,35 @@ export default class Worker extends Manager {
 
     // Fetch full data if user wants to generate osdb file
     if (Manager.config.mode !== 1) {
-      // Check if cursors was already fetched and stored in database
-      let cursors: Cursors | undefined = undefined;
+      // Loop through every beatmaps in the collection
+      let cursor: number | undefined = undefined;
       let fetchedCollectionCount = 0;
-      // Fetch cursors only if parallel mode is selected
-      if (Manager.config.parallel) {
-        cursors = await Requestor.fetchCursors(Manager.collection.id).catch(
-          () => undefined
+      do {
+        const v2ResponseData = await Requestor.fetchCollection(
+          Manager.collection.id,
+          { v2: true, cursor }
         );
-      }
 
-      // If no cursors was fetched or the database is down/errored
-      if (cursors) {
-        cursors.unshift(0); // Fetch the first page with cursor 0
-        // Fetch all beatmaps in the collection with cursors from database
-        const fetchCollectionPromise = [] as Promise<Json>[];
-        for (const cursor of cursors) {
-          const fetchCollectionTask = Requestor.fetchCollection(
-            Manager.collection.id,
-            {
-              v2: true,
-              cursor,
-            }
-          );
-
-          fetchCollectionPromise.push(fetchCollectionTask);
+        const und = Util.checkUndefined(v2ResponseData, [
+          "nextPageCursor",
+          "beatmaps",
+        ]);
+        if (und) {
+          throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
         }
-        const collectionData = await Promise.all(fetchCollectionPromise);
 
-        for (const data of collectionData) {
-          const und = Util.checkUndefined(data, ["beatmaps"]);
-          if (und) {
-            throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
-          }
+        const { nextPageCursor, beatmaps } =
+          v2ResponseData as v2ResCollectionType;
+        cursor = nextPageCursor;
+        Manager.collection.resolveFullData(beatmaps);
 
-          const { beatmaps } = data as v2ResCollectionType;
-          Manager.collection.resolveFullData(beatmaps);
-
-          fetchedCollectionCount += beatmaps.length;
-
-          this.monitor.setCondition({
-            fetched_collection: fetchedCollectionCount,
-          });
-          this.monitor.update();
-        }
-      } else {
-        // Loop through every beatmaps in the collection
-        let cursor: number | undefined = undefined;
-        do {
-          const v2ResponseData = await Requestor.fetchCollection(
-            Manager.collection.id,
-            { v2: true, cursor }
-          );
-
-          const und = Util.checkUndefined(v2ResponseData, [
-            "nextPageCursor",
-            "beatmaps",
-          ]);
-          if (und) {
-            throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
-          }
-
-          const { nextPageCursor, beatmaps } =
-            v2ResponseData as v2ResCollectionType;
-          cursor = nextPageCursor;
-          Manager.collection.resolveFullData(beatmaps);
-
-          // Update the current condition of monitor to display correct data
-          fetchedCollectionCount += beatmaps.length;
-          this.monitor.setCondition({
-            fetched_collection: fetchedCollectionCount,
-          });
-          this.monitor.update();
-        } while (cursor);
-      }
+        // Update the current condition of monitor to display correct data
+        fetchedCollectionCount += beatmaps.length;
+        this.monitor.setCondition({
+          fetched_collection: fetchedCollectionCount,
+        });
+        this.monitor.update();
+      } while (cursor);
     }
 
     // Task 4

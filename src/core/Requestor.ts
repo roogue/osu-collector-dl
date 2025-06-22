@@ -1,6 +1,6 @@
 import { Response, fetch, request } from "undici";
 import { Constant } from "../struct/Constant";
-import { Cursors, Json, Mode } from "../types";
+import { Json, Mode } from "../types";
 import OcdlError from "../struct/OcdlError";
 import { CollectionId } from "../struct/Collection";
 import { LIB_VERSION } from "../version";
@@ -8,10 +8,6 @@ import { LIB_VERSION } from "../version";
 interface FetchCollectionQuery {
   perPage?: number;
   cursor?: number;
-}
-
-interface fetchCursorsQuery {
-  id: CollectionId;
 }
 
 interface DownloadCollectionOptions {
@@ -93,9 +89,9 @@ export class Requestor {
     const query: FetchCollectionQuery = // Query is needed for V2 collection
       v2
         ? {
-            perPage: 100,
-            cursor, // Cursor which point to the next page
-          }
+          perPage: 100,
+          cursor, // Cursor which point to the next page
+        }
         : {};
 
     const data = await request(url, { method: "GET", query })
@@ -105,33 +101,6 @@ export class Requestor {
         }
 
         return (await res.body.json()) as Json;
-      })
-      .catch((e: unknown) => {
-        return new OcdlError("REQUEST_DATA_FAILED", e);
-      });
-
-    if (data instanceof OcdlError) {
-      throw data;
-    }
-
-    return data;
-  }
-
-  static async fetchCursors(id: CollectionId): Promise<Cursors> {
-    const url = Constant.OsuCollectorDbApiUrl;
-    const query: fetchCursorsQuery = { id };
-
-    const data = await request(url, {
-      method: "GET",
-      query,
-      headersTimeout: 5e3, // Set 5 Seconds Timeout
-    })
-      .then(async (res) => {
-        if (res.statusCode !== 200) {
-          throw `Status code: ${res.statusCode}`;
-        }
-
-        return (await res.body.json()) as Cursors;
       })
       .catch((e: unknown) => {
         return new OcdlError("REQUEST_DATA_FAILED", e);
