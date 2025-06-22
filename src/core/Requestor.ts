@@ -89,9 +89,9 @@ export class Requestor {
     const query: FetchCollectionQuery = // Query is needed for V2 collection
       v2
         ? {
-          perPage: 100,
-          cursor, // Cursor which point to the next page
-        }
+            perPage: 100,
+            cursor, // Cursor which point to the next page
+          }
         : {};
 
     const data = await request(url, { method: "GET", query })
