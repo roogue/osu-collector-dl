@@ -48,7 +48,7 @@ export class Collection {
 
   // Returns a sanitized version of the Collection's name with any forbidden characters replaced
   getCollectionName(): string {
-    return Util.replaceForbiddenChars(this.name);
+    return Util.replaceForbiddenChars(this.name).trim();
   }
 
   // Adds collection id in front to prevent unintentional overrides of folder with same name
