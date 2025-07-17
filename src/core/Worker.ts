@@ -202,12 +202,12 @@ export default class Worker extends Manager {
     try {
       if (
         rateLimitStatus !== null &&
-        rateLimitStatus < Manager.collection.beatMapCount
+        rateLimitStatus < Manager.collection.beatMapSetCount
       ) {
         this.monitor.freeze(
           Msg.TO_DOWNLOADS_EXCEED_DAILY_RATE_LIMIT,
           {
-            collection: Manager.collection.beatMapCount.toString(),
+            collection: Manager.collection.beatMapSetCount.toString(),
             limit: rateLimitStatus.toString(),
           },
           FreezeCondition.WARNING
