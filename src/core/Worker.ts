@@ -174,17 +174,19 @@ export default class Worker extends Manager {
         if (option === 1) {
           Manager.config.mode = 1; // Download beatmap sets only if user wants to resume previous downloads
           const missingLog = readFileSync(missingLogPath, "utf-8");
-          const lines = missingLog.split('\n').slice(2); // Skip first 2 lines
+          const lines = missingLog.split("\n").slice(2); // Skip first 2 lines
 
           const newBeatMapSets: Map<number, BeatMapSet> = new Map();
           for (const line of lines) {
             const trimmed = line.trim();
-            const match = trimmed.match(/https:\/\/osu\.ppy\.sh\/beatmapsets\/(\d+)/); // Get the ids only
+            const match = trimmed.match(
+              /https:\/\/osu\.ppy\.sh\/beatmapsets\/(\d+)/
+            ); // Get the ids only
             if (match) {
               const id = +match[1];
-              const beatMapSet = Manager.collection.beatMapSets.get(id)
+              const beatMapSet = Manager.collection.beatMapSets.get(id);
               if (!beatMapSet) {
-                continue
+                continue;
               }
               newBeatMapSets.set(id, beatMapSet);
             }
@@ -193,10 +195,9 @@ export default class Worker extends Manager {
           Manager.collection.beatMapSetCount = newBeatMapSets.size;
         }
       } catch (e) {
-        throw new OcdlError("GET_USER_INPUT_FAILED", e)
+        throw new OcdlError("GET_USER_INPUT_FAILED", e);
       }
     }
-
 
     // Task 5
     this.monitor.nextTask();

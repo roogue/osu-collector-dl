@@ -13,7 +13,7 @@ export default class Util {
 
   static async isOnline(): Promise<boolean> {
     return new Promise((resolve) => {
-      const req = https.get(Constant.OsuCollectorApiUrl, (_) => {
+      const req = https.get(Constant.OsuCollectorApiUrl, () => {
         resolve(true);
       });
       req.on("error", () => resolve(false));
@@ -23,7 +23,6 @@ export default class Util {
       });
     });
   }
-
 
   static checkUndefined(
     obj: Record<string, unknown>,

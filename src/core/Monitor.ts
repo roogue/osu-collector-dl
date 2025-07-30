@@ -210,7 +210,6 @@ export default class Monitor extends Manager {
     }
   }
 
-
   // Task 3
   private p_fetch_brief_info(): void {
     this.displayMessage(Msg.FETCH_BRIEF_INFO, {
@@ -228,7 +227,11 @@ export default class Monitor extends Manager {
       this.displayMessage(Msg.PREVIOUS_DOWNLOAD_FOUND);
 
       if (this.condition.retry_missing_log_input) {
-        this.displayMessage(Msg.INPUT_CONTINUE_DOWNLOAD_ERR, {}, DisplayTextColor.DANGER)
+        this.displayMessage(
+          Msg.INPUT_CONTINUE_DOWNLOAD_ERR,
+          {},
+          DisplayTextColor.DANGER
+        );
       }
     }
   }
