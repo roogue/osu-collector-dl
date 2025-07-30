@@ -12,6 +12,8 @@ interface Condition {
   new_version: string;
   retry_input: boolean;
   retry_mode: boolean;
+  missing_log_found: boolean;
+  retry_missing_log_input: boolean;
   fetched_collection: number;
   remaining_downloads: number | null; // Null happends when api wasn't requested successfully
   downloaded_beatmapset: number;
@@ -49,6 +51,8 @@ export default class Monitor extends Manager {
       new_version: "",
       retry_input: false,
       retry_mode: false,
+      missing_log_found: false,
+      retry_missing_log_input: false,
       fetched_collection: 0,
       downloaded_beatmapset: 0,
       remaining_downloads: 0,
@@ -62,10 +66,11 @@ export default class Monitor extends Manager {
       0: () => undefined, // Empty function
       1: this.p_input_id.bind(this), // Get Input id
       2: this.p_input_mode.bind(this), // Get Input mode
-      3: this.p_fetch_collection.bind(this), // Fetch collection
-      4: this.p_create_folder.bind(this), // Fetch collection v2
-      5: this.p_generate_osdb.bind(this), // Generate osdb
-      6: this.p_download.bind(this), // Download beatmapset
+      3: this.p_fetch_brief_info.bind(this), // Fetch brief info
+      4: this.p_check_folder.bind(this), // Check folder for missing logs or create new download folder
+      5: this.p_fetch_collection.bind(this), // Fetch collection v2
+      6: this.p_generate_osdb.bind(this), // Generate osdb
+      7: this.p_download.bind(this), // Download beatmapset
     };
   }
 
@@ -205,7 +210,30 @@ export default class Monitor extends Manager {
     }
   }
 
+
   // Task 3
+  private p_fetch_brief_info(): void {
+    this.displayMessage(Msg.FETCH_BRIEF_INFO, {
+      id: Manager.collection.id.toString(),
+    });
+  }
+
+  // Task 4
+  private p_check_folder(): void {
+    if (!this.condition.missing_log_found) {
+      this.displayMessage(Msg.CREATING_FOLDER, {
+        name: Manager.collection.name,
+      });
+    } else {
+      this.displayMessage(Msg.PREVIOUS_DOWNLOAD_FOUND);
+
+      if (this.condition.retry_missing_log_input) {
+        this.displayMessage(Msg.INPUT_CONTINUE_DOWNLOAD_ERR, {}, DisplayTextColor.DANGER)
+      }
+    }
+  }
+
+  // Task 5
   private p_fetch_collection(): void {
     const beatmaps_length = Manager.collection.beatMapCount.toString();
 
@@ -215,21 +243,14 @@ export default class Monitor extends Manager {
     });
   }
 
-  // Task 4
-  private p_create_folder(): void {
-    this.displayMessage(Msg.CREATE_FOLDER, {
-      name: Manager.collection.name,
-    });
-  }
-
-  // Task 5
+  // Task 6
   private p_generate_osdb(): void {
     this.displayMessage(Msg.GENERATE_OSDB, {
       name: Manager.collection.name,
     });
   }
 
-  // Task 6
+  // Task 7
   private p_download(): void {
     this.displayMessage(Msg.REMAINING_DOWNLOADS, {
       amount: this.condition.remaining_downloads?.toString() ?? "Unknown",

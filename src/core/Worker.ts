@@ -1,7 +1,7 @@
 import { DownloadManager } from "./DownloadManager";
 import OsdbGenerator from "./OsdbGenerator";
 import OcdlError from "../struct/OcdlError";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
 import _path from "path";
 import Util from "../util";
 import Monitor, { DisplayTextColor, FreezeCondition } from "./Monitor";
@@ -11,6 +11,7 @@ import Manager from "./Manager";
 import type { WorkingMode } from "../types";
 import { Requestor, v2ResCollectionType } from "./Requestor";
 import { LIB_VERSION } from "../version";
+import { BeatMapSet } from "../struct/BeatMapSet";
 
 export default class Worker extends Manager {
   monitor: Monitor;
@@ -24,7 +25,7 @@ export default class Worker extends Manager {
     this.monitor.update();
 
     // Check if internet connection is presence
-    this.monitor.displayMessage(Msg.CHECK_INTERNET_CONNECTION);
+    this.monitor.displayMessage(Msg.CHECK_CONNECTION_TO_SERVER);
     const onlineStatus = await Util.isOnline();
     // Stop the process if user is not connected to internet
     if (!onlineStatus)
@@ -115,6 +116,9 @@ export default class Worker extends Manager {
       throw new OcdlError("GET_USER_INPUT_FAILED", e);
     }
 
+    // Task 3
+    this.monitor.nextTask();
+
     // Fetch brief collection info
     try {
       const v1ResponseData = await Requestor.fetchCollection(
@@ -125,7 +129,76 @@ export default class Worker extends Manager {
       throw new OcdlError("REQUEST_DATA_FAILED", e);
     }
 
-    // Task 3
+    // Task 4
+    this.monitor.nextTask();
+
+    // Create folder for downloading beatmaps and generating osdb file
+    const folderPath = _path.join(
+      Manager.config.directory,
+      Manager.collection.getCollectionFolderName()
+    );
+
+    const missingLogPath = _path.join(
+      Manager.config.directory,
+      Manager.collection.getCollectionFolderName(),
+      Logger.missingLogPath
+    );
+
+    if (!existsSync(folderPath)) {
+      try {
+        mkdirSync(folderPath);
+      } catch (e) {
+        throw new OcdlError("FOLDER_GENERATION_FAILED", e);
+      }
+    }
+
+    if (existsSync(missingLogPath)) {
+      try {
+        let option: 1 | 2 | null = null;
+        while (option === null) {
+          this.monitor.setCondition({ missing_log_found: true });
+          this.monitor.update();
+          const result = this.monitor.awaitInput(
+            Msg.INPUT_CONTINUE_DOWNLOAD,
+            {},
+            "1"
+          ); // Always default to resume previous downloads
+
+          if (["1", "2"].includes(result)) {
+            option = parseInt(result) as 1 | 2;
+          }
+
+          this.monitor.setCondition({ retry_missing_log_input: true });
+        }
+
+        if (option === 1) {
+          Manager.config.mode = 1; // Download beatmap sets only if user wants to resume previous downloads
+          const missingLog = readFileSync(missingLogPath, "utf-8");
+          const lines = missingLog.split('\n').slice(2); // Skip first 2 lines
+
+          const newBeatMapSets: Map<number, BeatMapSet> = new Map();
+          for (const line of lines) {
+            const trimmed = line.trim();
+            const match = trimmed.match(/https:\/\/osu\.ppy\.sh\/beatmapsets\/(\d+)/); // Get the ids only
+            if (match) {
+              const id = +match[1];
+              const beatMapSet = Manager.collection.beatMapSets.get(id)
+              if (!beatMapSet) {
+                continue
+              }
+              newBeatMapSets.set(id, beatMapSet);
+            }
+          }
+          Manager.collection.beatMapSets = newBeatMapSets;
+          Manager.collection.beatMapSetCount = newBeatMapSets.size;
+        }
+      } catch (e) {
+        throw new OcdlError("GET_USER_INPUT_FAILED", e)
+      }
+    }
+
+
+    // Task 5
     this.monitor.nextTask();
 
     // Fetch full data if user wants to generate osdb file
@@ -161,23 +234,7 @@ export default class Worker extends Manager {
       } while (cursor);
     }
 
-    // Task 4
-    this.monitor.nextTask();
-
-    // Create folder for downloading beatmaps and generating osdb file
-    try {
-      const path = _path.join(
-        Manager.config.directory,
-        Manager.collection.getCollectionFolderName()
-      );
-      if (!existsSync(path)) {
-        mkdirSync(path);
-      }
-    } catch (e) {
-      throw new OcdlError("FOLDER_GENERATION_FAILED", e);
-    }
-
-    // Task 5
+    // Task 6
     this.monitor.nextTask();
 
     // Generate .osdb file
@@ -196,7 +253,7 @@ export default class Worker extends Manager {
       });
     }
 
-    // Task 6
+    // Task 7
     this.monitor.nextTask();
 
     try {
@@ -267,10 +324,13 @@ export default class Worker extends Manager {
         })
         .on("dailyRateLimited", (beatMapSets) => {
           // For beatmap sets which were failed to download, generate a missing log to notice the user
-          Logger.generateMissingLog(
-            Manager.collection.getCollectionFolderName(),
-            beatMapSets
-          );
+          if (beatMapSets.length > 0) {
+            Logger.generateMissingLog(
+              Manager.collection.getCollectionFolderName(),
+              beatMapSets
+            );
+          }
+
           this.monitor.setCondition({ remaining_downloads: 0 });
           this.monitor.update();
           // Errored freeze will force user to quit the program
@@ -281,17 +341,23 @@ export default class Worker extends Manager {
           );
         })
         .on("blocked", (beatMapSets) => {
-          Logger.generateMissingLog(
-            Manager.collection.getCollectionFolderName(),
-            beatMapSets
-          );
+          if (beatMapSets.length > 0) {
+            Logger.generateMissingLog(
+              Manager.collection.getCollectionFolderName(),
+              beatMapSets
+            );
+          }
+
           this.monitor.freeze(Msg.REQUEST_BLOCKED, {}, FreezeCondition.ERRORED);
         })
         .on("unavailable", (beatMapSets) => {
-          Logger.generateMissingLog(
-            Manager.collection.getCollectionFolderName(),
-            beatMapSets
-          );
+          if (beatMapSets.length > 0) {
+            Logger.generateMissingLog(
+              Manager.collection.getCollectionFolderName(),
+              beatMapSets
+            );
+          }
+
           this.monitor.freeze(
             Msg.RESOURCE_UNAVAILBALE,
             {},
@@ -299,10 +365,12 @@ export default class Worker extends Manager {
           );
         })
         .on("end", (beatMapSets) => {
-          Logger.generateMissingLog(
-            Manager.collection.getCollectionFolderName(),
-            beatMapSets
-          );
+          if (beatMapSets.length > 0) {
+            Logger.generateMissingLog(
+              Manager.collection.getCollectionFolderName(),
+              beatMapSets
+            );
+          }
           this.monitor.freeze(Msg.DOWNLOAD_COMPLETED);
         })
         .on("error", (beatMapSet, e) => {

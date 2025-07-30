@@ -29,8 +29,8 @@ export enum Msg {
   FREEZE = "Please press 'Enter' to {{action}}.",
   HEADER = "Collection: {{id}} - {{name}} | Working Mode: {{mode}}\n",
 
-  CHECK_INTERNET_CONNECTION = "Checking for internet connection...",
-  NO_CONNECTION = "This script only runs with presence of internet connection.",
+  CHECK_CONNECTION_TO_SERVER = "Connecting to server...",
+  NO_CONNECTION = "Unable to connect to osu-collector's server, the server may be down, or you are not connected to internet.",
 
   CHECK_NEW_VERSION = "Checking for new version...",
   NEW_VERSION = "New version ({{version}}) is available! Download the latest version: \n{{url}}\n",
@@ -48,13 +48,20 @@ export enum Msg {
 
   INPUT_ID = "Enter the collection ID you want to download:",
   INPUT_ID_ERR = "ID should be a number, Ex: '44' (without the quote)",
+
   INPUT_MODE_DESCRIPTION = "1: Download Beatmap Set only\n2: Download Beatmap Set + Generate .osdb\n3: Generate .osdb only\n",
   INPUT_MODE = "Please select a working mode. (Default: {{mode}}):",
   INPUT_MODE_ERR = "Invalid mode, please type '1' or '2' or '3' (without the quote)",
 
+  FETCH_BRIEF_INFO = "Fetching brief info for collection {{id}}...",
+
   FETCH_DATA = "Fetched [ {{amount}}/{{total}} ] of beatmaps' data...",
 
-  CREATE_FOLDER = "Creating folder {{name}}...",
+  CREATING_FOLDER = "Creating folder {{name}}...",
+
+  PREVIOUS_DOWNLOAD_FOUND = "There are unfinished downloads from a previous session.\n\n1: Resume those downloads\n2: Discard them and start fresh\n",
+  INPUT_CONTINUE_DOWNLOAD = "Please select an option to continue. (Default: 1):",
+  INPUT_CONTINUE_DOWNLOAD_ERR = "Invalid mode, please type '1' or '2' (without the quote)",
 
   GENERATE_OSDB = "Generating {{name}}.osdb file...",
   GENERATED_OSDB = "Generated {{name}}.osdb file successfully.",
