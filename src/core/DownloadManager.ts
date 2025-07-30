@@ -74,7 +74,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
 
     // Emit if the download has been done
     this.queue.on("idle", () => {
-      this.emit("end", this._getNotDownloadedBeatapSets());
+      this.emit("end", this.getNotDownloadedBeatapSets());
     });
 
     this.on("rateLimited", () => {
@@ -106,7 +106,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       this.remainingDownloadsLimit != null &&
       this.remainingDownloadsLimit <= 0
     ) {
-      this.emit("dailyRateLimited", this._getNotDownloadedBeatapSets());
+      this.emit("dailyRateLimited", this.getNotDownloadedBeatapSets());
       return false;
     }
 
@@ -134,7 +134,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
             this.lastDownloadsLimitCheck = Date.now();
             const rateLimitStatus = await Requestor.checkRateLimitation();
             if (rateLimitStatus === 0) {
-              this.emit("dailyRateLimited", this._getNotDownloadedBeatapSets());
+              this.emit("dailyRateLimited", this.getNotDownloadedBeatapSets());
             } else {
               this.remainingDownloadsLimit = rateLimitStatus;
             }
@@ -146,10 +146,10 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
         this.queue.add(async () => await this._downloadFile(beatMapSet));
         return false;
       } else if (response.status === 403) {
-        this.emit("blocked", this._getNotDownloadedBeatapSets());
+        this.emit("blocked", this.getNotDownloadedBeatapSets());
         return false;
       } else if (response.status === 451) {
-        this.emit("unavailable", this._getNotDownloadedBeatapSets());
+        this.emit("unavailable", this.getNotDownloadedBeatapSets());
         return false;
       } else if (response.status !== 200) {
         throw `Status Code: ${response.status}`;
@@ -202,7 +202,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
     return true;
   }
 
-  private _getNotDownloadedBeatapSets(): BeatMapSet[] {
+  public getNotDownloadedBeatapSets(): BeatMapSet[] {
     return Array.from(Manager.collection.beatMapSets).map(
       ([, beatMapSet]) => beatMapSet
     );

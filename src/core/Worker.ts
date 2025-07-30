@@ -388,6 +388,20 @@ export default class Worker extends Manager {
           this.monitor.update();
         });
 
+      const cleanUp = () => {
+        const beatMapSets = downloadManager.getNotDownloadedBeatapSets();
+        if (beatMapSets.length > 0) {
+          Logger.generateMissingLog(
+            Manager.collection.getCollectionFolderName(),
+            beatMapSets
+          );
+        }
+      }
+
+      ['SIGINT', 'SIGTERM', 'SIGHUP'].forEach(signal => {
+        process.on(signal, () => cleanUp());
+      });
+
       downloadManager.bulkDownload();
     } catch (e) {
       throw new OcdlError("MANAGE_DOWNLOAD_FAILED", e);
