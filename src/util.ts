@@ -1,4 +1,5 @@
-import dns from "dns";
+import https from "https";
+import { Constant } from "./struct/Constant";
 
 export default class Util {
   static isBoolean(obj: unknown): boolean {
@@ -11,8 +12,18 @@ export default class Util {
   }
 
   static async isOnline(): Promise<boolean> {
-    return !!(await dns.promises.resolve("google.com").catch(() => false));
+    return new Promise((resolve) => {
+      const req = https.get(Constant.OsuCollectorApiUrl, (_) => {
+        resolve(true);
+      });
+      req.on("error", () => resolve(false));
+      req.setTimeout(10000, () => {
+        req.destroy();
+        resolve(false);
+      });
+    });
   }
+
 
   static checkUndefined(
     obj: Record<string, unknown>,
