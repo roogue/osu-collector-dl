@@ -101,6 +101,12 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
     beatMapSet: BeatMapSet,
     options: { retries: number; alt: boolean } = { retries: 3, alt: false } // Whether or not use the alternative mirror url
   ): Promise<boolean> {
+    let isProbeRequest = false;
+    if (this.testRequest) {
+      isProbeRequest = true;
+      this.testRequest = false;
+    }
+
     // Check if the daily rate limit hit
     if (
       this.remainingDownloadsLimit != null &&
@@ -125,7 +131,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
 
       if (response.status === 429) {
         // If user still get 429 after a test request (60 seconds wait), then check if user is daily rate limited
-        if (this.testRequest) {
+        if (isProbeRequest) {
           if (
             !this.lastDownloadsLimitCheck ||
             Date.now() - this.lastDownloadsLimitCheck > 5e3
@@ -155,8 +161,7 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
         throw `Status Code: ${response.status}`;
       }
 
-      if (this.testRequest) {
-        this.testRequest = false;
+      if (isProbeRequest) {
         this.queue.concurrency = Manager.config.parallel
           ? Manager.config.concurrency
           : 1;
@@ -177,6 +182,10 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
       if (this.remainingDownloadsLimit != null) this.remainingDownloadsLimit--;
       this.emit("downloaded", beatMapSet);
     } catch (e) {
+      if (isProbeRequest) {
+        this.testRequest = true;
+      }
+
       // Retry the download by pushing the map to the end of the queue, and use the alternative URL if this is the last retry
       if (options.retries) {
         this.emit("retrying", beatMapSet);
