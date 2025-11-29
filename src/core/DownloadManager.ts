@@ -129,6 +129,13 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
         alternative: options.alt,
       });
 
+      const xRateLimit = response.headers.get("x-ratelimit-remaining");
+      if (xRateLimit && parseInt(xRateLimit) <= 12) { // 12 is the Highest cost
+        if (!this.queue.isPaused) {
+          this.emit("rateLimited");
+        }
+      }
+
       if (response.status === 429) {
         // If user still get 429 after a test request (60 seconds wait), then check if user is daily rate limited
         if (isProbeRequest) {
@@ -147,7 +154,9 @@ export class DownloadManager extends EventEmitter implements DownloadManager {
           }
         }
 
-        this.emit("rateLimited");
+        if (!this.queue.isPaused) {
+          this.emit("rateLimited");
+        }
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         this.queue.add(async () => await this._downloadFile(beatMapSet));
         return false;
