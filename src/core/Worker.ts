@@ -54,31 +54,57 @@ export default class Worker extends Manager {
     }
     this.monitor.setCondition({ remaining_downloads: rateLimitStatus });
 
-    let id: number | null = null;
+    let collectionIds: number[] = [];
     let mode: WorkingMode | null = null;
 
     try {
       // Task 1
       this.monitor.nextTask();
 
-      // Get the collection id from user input
-      while (id === null) {
-        this.monitor.update();
+      const queueFilePath = _path.resolve("collections.txt");
 
-        const result = parseInt(
-          this.monitor.awaitInput(Msg.INPUT_ID, {}, "None")
-        );
-
-        // Check if result is valid
-        if (!isNaN(result)) {
-          id = result;
-        }
-        // Set retry to true to display the hint if user incorrectly inserted unwanted value
-        this.monitor.setCondition({ retry_input: true });
+      // Check if collections.txt exists and has valid collection IDs/links
+      if (existsSync(queueFilePath)) {
+        try {
+          const content = readFileSync(queueFilePath, "utf-8");
+          const matches = content.match(/\d+/g);
+          if (matches && matches.length > 0) {
+            const parsed = matches.map((m) => parseInt(m)).filter((n) => !isNaN(n) && n > 0);
+            collectionIds = Array.from(new Set(parsed));
+          }
+        } catch {}
       }
 
-      // Set collection id after getting input from user
-      Manager.collection.id = id;
+      // Get collection IDs from user input if not found in collections.txt
+      while (collectionIds.length === 0) {
+        this.monitor.update();
+
+        const input = this.monitor.awaitInput(Msg.INPUT_ID, {}, "");
+
+        if (!input.trim() && existsSync(queueFilePath)) {
+          try {
+            const content = readFileSync(queueFilePath, "utf-8");
+            const matches = content.match(/\d+/g);
+            if (matches && matches.length > 0) {
+              const parsed = matches.map((m) => parseInt(m)).filter((n) => !isNaN(n) && n > 0);
+              collectionIds = Array.from(new Set(parsed));
+            }
+          } catch {}
+        }
+
+        if (collectionIds.length === 0) {
+          const matches = input.match(/\d+/g);
+          if (matches && matches.length > 0) {
+            const parsed = matches.map((m) => parseInt(m)).filter((n) => !isNaN(n) && n > 0);
+            collectionIds = Array.from(new Set(parsed));
+          }
+        }
+
+        if (collectionIds.length === 0) {
+          // Set retry to true to display the hint if user incorrectly inserted unwanted value
+          this.monitor.setCondition({ retry_input: true });
+        }
+      }
 
       // Task 2
       this.monitor.nextTask();
@@ -116,295 +142,339 @@ export default class Worker extends Manager {
       throw new OcdlError("GET_USER_INPUT_FAILED", e);
     }
 
-    // Task 3
-    this.monitor.nextTask();
+    // Process all collections in queue
+    for (let cIdx = 0; cIdx < collectionIds.length; cIdx++) {
+      const currentId = collectionIds[cIdx];
+      Manager.collection.reset();
+      Manager.collection.id = currentId;
 
-    // Fetch brief collection info
-    try {
-      const v1ResponseData = await Requestor.fetchCollection(
-        Manager.collection.id
+      if (cIdx > 0) {
+        this.monitor.resetForNextCollection();
+      } else {
+        // Task 3
+        this.monitor.nextTask();
+      }
+
+      // Fetch brief collection info
+      try {
+        const v1ResponseData = await Requestor.fetchCollection(
+          Manager.collection.id
+        );
+        Manager.collection.resolveData(v1ResponseData);
+      } catch (e) {
+        if (collectionIds.length > 1) {
+          this.monitor.displayMessage(
+            Msg.PROCESS_ERRORED,
+            { error: `Failed to fetch info for collection ${currentId}: ${String(e)}` },
+            DisplayTextColor.DANGER
+          );
+          continue;
+        } else {
+          throw new OcdlError("REQUEST_DATA_FAILED", e);
+        }
+      }
+
+      // Task 4
+      this.monitor.nextTask();
+
+      // Create folder for downloading beatmaps and generating osdb file
+      const folderPath = _path.join(
+        Manager.config.directory,
+        Manager.collection.getCollectionFolderName()
       );
-      Manager.collection.resolveData(v1ResponseData);
-    } catch (e) {
-      throw new OcdlError("REQUEST_DATA_FAILED", e);
-    }
 
-    // Task 4
-    this.monitor.nextTask();
+      const missingLogPath = _path.join(
+        Manager.config.directory,
+        Manager.collection.getCollectionFolderName(),
+        Logger.missingLogPath
+      );
 
-    // Create folder for downloading beatmaps and generating osdb file
-    const folderPath = _path.join(
-      Manager.config.directory,
-      Manager.collection.getCollectionFolderName()
-    );
-
-    const missingLogPath = _path.join(
-      Manager.config.directory,
-      Manager.collection.getCollectionFolderName(),
-      Logger.missingLogPath
-    );
-
-    if (!existsSync(folderPath)) {
-      try {
-        mkdirSync(folderPath);
-      } catch (e) {
-        throw new OcdlError("FOLDER_GENERATION_FAILED", e);
-      }
-    }
-
-    if (existsSync(missingLogPath)) {
-      try {
-        let option: 1 | 2 | null = null;
-        while (option === null) {
-          this.monitor.setCondition({ missing_log_found: true });
-          this.monitor.update();
-          const result = this.monitor.awaitInput(
-            Msg.INPUT_CONTINUE_DOWNLOAD,
-            {},
-            "1"
-          ); // Always default to resume previous downloads
-
-          if (["1", "2"].includes(result)) {
-            option = parseInt(result) as 1 | 2;
-          }
-
-          this.monitor.setCondition({ retry_missing_log_input: true });
+      if (!existsSync(folderPath)) {
+        try {
+          mkdirSync(folderPath);
+        } catch (e) {
+          throw new OcdlError("FOLDER_GENERATION_FAILED", e);
         }
+      }
 
-        if (option === 1) {
-          Manager.config.mode = 1; // Download beatmap sets only if user wants to resume previous downloads
-          const missingLog = readFileSync(missingLogPath, "utf-8");
-          const lines = missingLog.split("\n").slice(2); // Skip first 2 lines
+      if (existsSync(missingLogPath)) {
+        try {
+          const missingLogAction = Manager.config.onMissingLog;
+          let option: 1 | 2;
 
-          const newBeatMapSets: Map<number, BeatMapSet> = new Map();
-          for (const line of lines) {
-            const trimmed = line.trim();
-            const match = trimmed.match(
-              /https:\/\/osu\.ppy\.sh\/beatmapsets\/(\d+)/
-            ); // Get the ids only
-            if (match) {
-              const id = +match[1];
-              const beatMapSet = Manager.collection.beatMapSets.get(id);
-              if (!beatMapSet) {
-                continue;
+          if (missingLogAction === "resume" || (missingLogAction === "prompt" && collectionIds.length > 1)) {
+            // Automatically resume when multiple collections are queued or explicitly set to "resume"
+            option = 1;
+          } else if (missingLogAction === "restart") {
+            option = 2;
+          } else {
+            // Prompt user for input only when downloading a single collection manually and onMissingLog is "prompt"
+            let userOption: 1 | 2 | null = null;
+            while (userOption === null) {
+              this.monitor.setCondition({ missing_log_found: true });
+              this.monitor.update();
+              const result = this.monitor.awaitInput(
+                Msg.INPUT_CONTINUE_DOWNLOAD,
+                {},
+                "1"
+              );
+
+              if (["1", "2"].includes(result)) {
+                userOption = parseInt(result) as 1 | 2;
               }
-              newBeatMapSets.set(id, beatMapSet);
+
+              this.monitor.setCondition({ retry_missing_log_input: true });
             }
+            option = userOption;
           }
-          Manager.collection.beatMapSets = newBeatMapSets;
-          Manager.collection.beatMapSetCount = newBeatMapSets.size;
+
+          if (option === 1) {
+            Manager.config.mode = 1; // Download beatmap sets only if user wants to resume previous downloads
+            const missingLog = readFileSync(missingLogPath, "utf-8");
+            const lines = missingLog.split("\n").slice(2); // Skip first 2 lines
+
+            const newBeatMapSets: Map<number, BeatMapSet> = new Map();
+            for (const line of lines) {
+              const trimmed = line.trim();
+              const match = trimmed.match(
+                /https:\/\/osu\.ppy\.sh\/beatmapsets\/(\d+)/
+              ); // Get the ids only
+              if (match) {
+                const id = +match[1];
+                const beatMapSet = Manager.collection.beatMapSets.get(id);
+                if (!beatMapSet) {
+                  continue;
+                }
+                newBeatMapSets.set(id, beatMapSet);
+              }
+            }
+            Manager.collection.beatMapSets = newBeatMapSets;
+            Manager.collection.beatMapSetCount = newBeatMapSets.size;
+          }
+        } catch (e) {
+          throw new OcdlError("GET_USER_INPUT_FAILED", e);
         }
-      } catch (e) {
-        throw new OcdlError("GET_USER_INPUT_FAILED", e);
-      }
-    }
-
-    // Task 5
-    this.monitor.nextTask();
-
-    // Fetch full data if user wants to generate osdb file
-    if (Manager.config.mode !== 1) {
-      // Loop through every beatmaps in the collection
-      let cursor: number | undefined = undefined;
-      let fetchedCollectionCount = 0;
-      do {
-        const v2ResponseData = await Requestor.fetchCollection(
-          Manager.collection.id,
-          { v2: true, cursor }
-        );
-
-        const und = Util.checkUndefined(v2ResponseData, [
-          "nextPageCursor",
-          "beatmaps",
-        ]);
-        if (und) {
-          throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
-        }
-
-        const { nextPageCursor, beatmaps } =
-          v2ResponseData as v2ResCollectionType;
-        cursor = nextPageCursor;
-        Manager.collection.resolveFullData(beatmaps);
-
-        // Update the current condition of monitor to display correct data
-        fetchedCollectionCount += beatmaps.length;
-        this.monitor.setCondition({
-          fetched_collection: fetchedCollectionCount,
-        });
-        this.monitor.update();
-      } while (cursor);
-    }
-
-    // Task 6
-    this.monitor.nextTask();
-
-    // Generate .osdb file
-    if (Manager.config.mode !== 1) {
-      try {
-        const generator = new OsdbGenerator();
-        generator.writeOsdb();
-      } catch (e) {
-        throw new OcdlError("GENERATE_OSDB_FAILED", e);
-      }
-    }
-
-    if (Manager.config.mode === 3) {
-      return this.monitor.freeze(Msg.GENERATED_OSDB, {
-        name: Manager.collection.name,
-      });
-    }
-
-    // Task 7
-    this.monitor.nextTask();
-
-    try {
-      if (
-        rateLimitStatus !== null &&
-        rateLimitStatus < Manager.collection.beatMapSetCount
-      ) {
-        this.monitor.freeze(
-          Msg.TO_DOWNLOADS_EXCEED_DAILY_RATE_LIMIT,
-          {
-            collection: Manager.collection.beatMapSetCount.toString(),
-            limit: rateLimitStatus.toString(),
-          },
-          FreezeCondition.WARNING
-        );
       }
 
-      const downloadManager = new DownloadManager(rateLimitStatus);
-      // Listen to current download state and log into console
-      downloadManager
-        .on("downloading", (beatMapSet) => {
-          this.monitor.appendDownloadLog(
-            Msg.DOWNLOADING_FILE,
-            {
-              id: beatMapSet.id.toString(),
-              name: beatMapSet.title ?? "",
-            },
-            DisplayTextColor.SECONDARY
+      // Task 5
+      this.monitor.nextTask();
+
+      // Fetch full data if user wants to generate osdb file
+      if (Manager.config.mode !== 1) {
+        // Loop through every beatmaps in the collection
+        let cursor: number | undefined = undefined;
+        let fetchedCollectionCount = 0;
+        do {
+          const v2ResponseData = await Requestor.fetchCollection(
+            Manager.collection.id,
+            { v2: true, cursor }
           );
-          this.monitor.update();
-        })
-        .on("retrying", (beatMapSet) => {
-          this.monitor.appendDownloadLog(
-            Msg.RETRYING_DOWNLOAD,
-            {
-              id: beatMapSet.id.toString(),
-              name: beatMapSet.title ?? "",
-            },
-            DisplayTextColor.SECONDARY
-          );
-          this.monitor.update();
-        })
-        .on("downloaded", (beatMapSet) => {
-          const downloaded = downloadManager.getDownloadedBeatMapSetSize();
-          const remainingDownloadsLimit =
-            downloadManager.getRemainingDownloadsLimit();
+
+          const und = Util.checkUndefined(v2ResponseData, [
+            "nextPageCursor",
+            "beatmaps",
+          ]);
+          if (und) {
+            throw new OcdlError("CORRUPTED_RESPONSE", `${und} is required`);
+          }
+
+          const { nextPageCursor, beatmaps } =
+            v2ResponseData as v2ResCollectionType;
+          cursor = nextPageCursor;
+          Manager.collection.resolveFullData(beatmaps);
+
+          // Update the current condition of monitor to display correct data
+          fetchedCollectionCount += beatmaps.length;
           this.monitor.setCondition({
-            downloaded_beatmapset: downloaded,
-            remaining_downloads: remainingDownloadsLimit,
+            fetched_collection: fetchedCollectionCount,
           });
-          this.monitor.appendDownloadLog(
-            Msg.DOWNLOADED_FILE,
-            {
-              id: beatMapSet.id.toString(),
-              name: beatMapSet.title ?? "",
-            },
-            DisplayTextColor.SUCCESS
-          );
           this.monitor.update();
-        })
-        .on("rateLimited", () => {
-          this.monitor.appendDownloadLog(
-            Msg.RATE_LIMITED,
-            {},
-            DisplayTextColor.DANGER
-          );
-          this.monitor.update();
-        })
-        .on("dailyRateLimited", (beatMapSets) => {
-          // For beatmap sets which were failed to download, generate a missing log to notice the user
-          if (beatMapSets.length > 0) {
-            Logger.generateMissingLog(
-              Manager.collection.getCollectionFolderName(),
-              beatMapSets
-            );
-          }
+        } while (cursor);
+      }
 
-          this.monitor.setCondition({ remaining_downloads: 0 });
-          this.monitor.update();
-          // Errored freeze will force user to quit the program
-          this.monitor.freeze(
-            Msg.DAILY_RATE_LIMIT_HIT,
-            {},
-            FreezeCondition.ERRORED
-          );
-        })
-        .on("blocked", (beatMapSets) => {
-          if (beatMapSets.length > 0) {
-            Logger.generateMissingLog(
-              Manager.collection.getCollectionFolderName(),
-              beatMapSets
-            );
-          }
+      // Task 6
+      this.monitor.nextTask();
 
-          this.monitor.freeze(Msg.REQUEST_BLOCKED, {}, FreezeCondition.ERRORED);
-        })
-        .on("unavailable", (beatMapSets) => {
-          if (beatMapSets.length > 0) {
-            Logger.generateMissingLog(
-              Manager.collection.getCollectionFolderName(),
-              beatMapSets
-            );
-          }
-
-          this.monitor.freeze(
-            Msg.RESOURCE_UNAVAILBALE,
-            {},
-            FreezeCondition.ERRORED
-          );
-        })
-        .on("end", (beatMapSets) => {
-          if (beatMapSets.length > 0) {
-            Logger.generateMissingLog(
-              Manager.collection.getCollectionFolderName(),
-              beatMapSets
-            );
-          }
-          this.monitor.freeze(Msg.DOWNLOAD_COMPLETED);
-        })
-        .on("error", (beatMapSet, e) => {
-          this.monitor.appendDownloadLog(
-            Msg.DOWNLOAD_FILE_FAILED,
-            {
-              id: beatMapSet.id.toString(),
-              name: beatMapSet.title ?? "",
-              error: String(e),
-            },
-            DisplayTextColor.DANGER
-          );
-
-          this.monitor.update();
-        });
-
-      const cleanUp = () => {
-        const beatMapSets = downloadManager.getNotDownloadedBeatapSets();
-        if (beatMapSets.length > 0) {
-          Logger.generateMissingLog(
-            Manager.collection.getCollectionFolderName(),
-            beatMapSets
-          );
+      // Generate .osdb file
+      if (Manager.config.mode !== 1) {
+        try {
+          const generator = new OsdbGenerator();
+          generator.writeOsdb();
+        } catch (e) {
+          throw new OcdlError("GENERATE_OSDB_FAILED", e);
         }
       }
 
-      ['SIGINT', 'SIGTERM', 'SIGHUP'].forEach(signal => {
-        process.on(signal, () => cleanUp());
-      });
+      if (Manager.config.mode === 3) {
+        if (cIdx === collectionIds.length - 1) {
+          return this.monitor.freeze(Msg.GENERATED_OSDB, {
+            name: Manager.collection.name,
+          });
+        }
+        continue;
+      }
 
-      downloadManager.bulkDownload();
-    } catch (e) {
-      throw new OcdlError("MANAGE_DOWNLOAD_FAILED", e);
+      // Task 7
+      this.monitor.nextTask();
+
+      try {
+        if (
+          rateLimitStatus !== null &&
+          rateLimitStatus < Manager.collection.beatMapSetCount
+        ) {
+          this.monitor.freeze(
+            Msg.TO_DOWNLOADS_EXCEED_DAILY_RATE_LIMIT,
+            {
+              collection: Manager.collection.beatMapSetCount.toString(),
+              limit: rateLimitStatus.toString(),
+            },
+            FreezeCondition.WARNING
+          );
+        }
+
+        const isLastCollection = cIdx === collectionIds.length - 1;
+        await new Promise<void>((resolve, reject) => {
+          const downloadManager = new DownloadManager(rateLimitStatus);
+          // Listen to current download state and log into console
+          downloadManager
+            .on("downloading", (beatMapSet) => {
+              this.monitor.appendDownloadLog(
+                Msg.DOWNLOADING_FILE,
+                {
+                  id: beatMapSet.id.toString(),
+                  name: beatMapSet.title ?? "",
+                },
+                DisplayTextColor.SECONDARY
+              );
+              this.monitor.update();
+            })
+            .on("retrying", (beatMapSet) => {
+              this.monitor.appendDownloadLog(
+                Msg.RETRYING_DOWNLOAD,
+                {
+                  id: beatMapSet.id.toString(),
+                  name: beatMapSet.title ?? "",
+                },
+                DisplayTextColor.SECONDARY
+              );
+              this.monitor.update();
+            })
+            .on("downloaded", (beatMapSet) => {
+              const downloaded = downloadManager.getDownloadedBeatMapSetSize();
+              const remainingDownloadsLimit =
+                downloadManager.getRemainingDownloadsLimit();
+              this.monitor.setCondition({
+                downloaded_beatmapset: downloaded,
+                remaining_downloads: remainingDownloadsLimit,
+              });
+              this.monitor.appendDownloadLog(
+                Msg.DOWNLOADED_FILE,
+                {
+                  id: beatMapSet.id.toString(),
+                  name: beatMapSet.title ?? "",
+                },
+                DisplayTextColor.SUCCESS
+              );
+              this.monitor.update();
+            })
+            .on("rateLimited", () => {
+              this.monitor.appendDownloadLog(
+                Msg.RATE_LIMITED,
+                {},
+                DisplayTextColor.DANGER
+              );
+              this.monitor.update();
+            })
+            .on("dailyRateLimited", (beatMapSets) => {
+              // For beatmap sets which were failed to download, generate a missing log to notice the user
+              if (beatMapSets.length > 0) {
+                Logger.generateMissingLog(
+                  Manager.collection.getCollectionFolderName(),
+                  beatMapSets
+                );
+              }
+
+              this.monitor.setCondition({ remaining_downloads: 0 });
+              this.monitor.update();
+              // Errored freeze will force user to quit the program
+              this.monitor.freeze(
+                Msg.DAILY_RATE_LIMIT_HIT,
+                {},
+                FreezeCondition.ERRORED
+              );
+              reject(new OcdlError("MANAGE_DOWNLOAD_FAILED", "Daily rate limit reached"));
+            })
+            .on("blocked", (beatMapSets) => {
+              if (beatMapSets.length > 0) {
+                Logger.generateMissingLog(
+                  Manager.collection.getCollectionFolderName(),
+                  beatMapSets
+                );
+              }
+
+              this.monitor.freeze(Msg.REQUEST_BLOCKED, {}, FreezeCondition.ERRORED);
+              reject(new OcdlError("MANAGE_DOWNLOAD_FAILED", "Request blocked"));
+            })
+            .on("unavailable", (beatMapSets) => {
+              if (beatMapSets.length > 0) {
+                Logger.generateMissingLog(
+                  Manager.collection.getCollectionFolderName(),
+                  beatMapSets
+                );
+              }
+
+              this.monitor.freeze(
+                Msg.RESOURCE_UNAVAILBALE,
+                {},
+                FreezeCondition.ERRORED
+              );
+              reject(new OcdlError("MANAGE_DOWNLOAD_FAILED", "Resource unavailable"));
+            })
+            .on("end", (beatMapSets) => {
+              if (beatMapSets.length > 0) {
+                Logger.generateMissingLog(
+                  Manager.collection.getCollectionFolderName(),
+                  beatMapSets
+                );
+              }
+              if (isLastCollection) {
+                this.monitor.freeze(Msg.DOWNLOAD_COMPLETED);
+              }
+              resolve();
+            })
+            .on("error", (beatMapSet, e) => {
+              this.monitor.appendDownloadLog(
+                Msg.DOWNLOAD_FILE_FAILED,
+                {
+                  id: beatMapSet.id.toString(),
+                  name: beatMapSet.title ?? "",
+                  error: String(e),
+                },
+                DisplayTextColor.DANGER
+              );
+
+              this.monitor.update();
+            });
+
+          const cleanUp = () => {
+            const beatMapSets = downloadManager.getNotDownloadedBeatapSets();
+            if (beatMapSets.length > 0) {
+              Logger.generateMissingLog(
+                Manager.collection.getCollectionFolderName(),
+                beatMapSets
+              );
+            }
+          };
+
+          ["SIGINT", "SIGTERM", "SIGHUP"].forEach((signal) => {
+            process.on(signal as NodeJS.Signals, () => cleanUp());
+          });
+
+          downloadManager.bulkDownload();
+        });
+      } catch (e) {
+        throw new OcdlError("MANAGE_DOWNLOAD_FAILED", e);
+      }
     }
   }
 }
