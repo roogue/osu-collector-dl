@@ -46,8 +46,8 @@ export enum Msg {
 
   RESOURCE_UNAVAILBALE = "The download request is blocked in your location for legal reasons, unable to download collection.",
 
-  INPUT_ID = "Enter the collection ID you want to download:",
-  INPUT_ID_ERR = "ID should be a number, Ex: '44' (without the quote)",
+  INPUT_ID = "Enter collection ID(s) or URL(s) separated by comma/space (or press Enter if using collections.txt):",
+  INPUT_ID_ERR = "No valid collection ID found! Example: '44' or '44, 102' or https://osucollector.com/collections/44",
 
   INPUT_MODE_DESCRIPTION = "1: Download Beatmap Set only\n2: Download Beatmap Set + Generate .osdb\n3: Generate .osdb only\n",
   INPUT_MODE = "Please select a working mode. (Default: {{mode}}):",

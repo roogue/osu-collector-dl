@@ -5,6 +5,8 @@ import type { Json, JsonValues, WorkingMode } from "../types";
 import Util from "../util";
 import OcdlError from "./OcdlError";
 
+export type MissingLogAction = "resume" | "restart" | "prompt";
+
 export default class Config {
   // Whether the download process should be done in parallel
   parallel: boolean;
@@ -21,6 +23,8 @@ export default class Config {
   mode: WorkingMode;
   // The length of the log when downloading beatmapsets
   logSize: number;
+  // Action to take when missing log is found: "resume", "restart", or "prompt"
+  onMissingLog: MissingLogAction;
   // The path to the config file
   static readonly configFilePath = "./config.json";
 
@@ -64,6 +68,7 @@ export default class Config {
 
     this.directory = this._getPath(config.directory);
     this.mode = this._getMode(config.mode);
+    this.onMissingLog = this._getMissingLogAction(config.onMissingLog);
   }
 
   // Generates a default config file if one does not already exist
@@ -78,6 +83,7 @@ export default class Config {
           logSize: 15,
           directory: "",
           mode: 1,
+          onMissingLog: "prompt",
         })
       );
     }
@@ -93,6 +99,14 @@ export default class Config {
   // If the provided data is invalid, returns 1 (Download BeatmapSet)
   private _getMode(data: JsonValues): 1 | 2 | 3 {
     return data == 1 ? 1 : data == 2 ? 2 : data == 3 ? 3 : 1;
+  }
+
+  // Returns the action to take when missing log is found
+  // If the provided data is invalid, returns "prompt"
+  private _getMissingLogAction(data: JsonValues): MissingLogAction {
+    return data === "resume" || data === "restart" || data === "prompt"
+      ? (data as MissingLogAction)
+      : "prompt";
   }
 
   // Returns the directory path based on the provided data

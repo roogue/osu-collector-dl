@@ -22,6 +22,15 @@ export class Collection {
     username: "Unknown",
   };
 
+  reset(): void {
+    this.beatMapSets = new Map();
+    this.beatMapSetCount = 0;
+    this.beatMapCount = 0;
+    this.id = 0;
+    this.name = "Unknown";
+    this.uploader = { username: "Unknown" };
+  }
+
   // Populates the Collection instance with data from the given jsonData object
   resolveData(jsonData: Json = {}) {
     // Check for required fields in the jsonData object

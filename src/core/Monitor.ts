@@ -153,6 +153,15 @@ export default class Monitor extends Manager {
     this.update();
   }
 
+  resetForNextCollection(): void {
+    this.progress = 3;
+    this.condition.missing_log_found = false;
+    this.condition.retry_missing_log_input = false;
+    this.condition.fetched_collection = 0;
+    this.condition.downloaded_beatmapset = 0;
+    this.condition.download_log = [];
+  }
+
   setCondition(new_condition: Partial<Condition>): void {
     Object.assign(this.condition, new_condition);
   }
